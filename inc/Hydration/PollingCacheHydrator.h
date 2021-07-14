@@ -6,8 +6,8 @@
 #inlcude <memory>
 
 #include "ICacheHydrationStrategy.h"
-#include "ICacheStoreStrategy.h"
-#include "ICacheDataSource.h"
+#include "../Store/ICacheStoreStrategy.h"
+#include "../DataSource/ICacheDataSource.h"
 
 namespace Microsoft::Azure::CacheBrowns {
     template<

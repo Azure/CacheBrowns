@@ -4,8 +4,8 @@
 #define CACHEBROWNS_PULLCACHEHYDRATOR_H
 
 #include "ICacheHydrationStrategy.h"
-#include "ICacheStoreStrategy.h"
-#include "ICacheDataSource.h"
+#include "../Store/ICacheStoreStrategy.h"
+#include "../DataSource/ICacheDataSource.h"
 #include <set>
 
 namespace Microsoft::Azure::CacheBrowns {
