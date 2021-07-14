@@ -1,14 +1,16 @@
-# Project
+# CacheBrowns
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+Experimental implementation of a programmable managed cached for native applications. This is a general purpose header only library leverage
+declarative caches in code with an emphasis on correctness and ease of use by providing pre-implemented strategies.
 
-As the maintainer of this project, please make a few updates:
+This isn't the going to set any performance records, but that's on purpose. It isn't slow, and following it's patterns eliminates entire classes
+of cache invalidation bugs.
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+Spiritually the concepts leverage here are inspired by "one-way data flow" and managed memory.
+
+This page will be updated when the project has reached a greater level of maturity. Look at the docs folder for any proposals and design reviews in the mean time.
+
+If the project goes well, we'll also create a version for .NETCore during the next hackathon.
 
 ## Contributing
 
