@@ -47,11 +47,14 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
         Value datum;
         std::tie(found, datum) = cacheDataStore->Get(key);
 
-        if (found) {
+        if (found)
+        {
             valid = cacheDataSource->IsValid(key, datum);
 
             if (!valid) { std::tie(wasHydrated, datum) = TryHydrate(key); }
-        } else {
+        }
+        else
+        {
             std::tie(wasHydrated, datum) = TryHydrate(key);
         }
 

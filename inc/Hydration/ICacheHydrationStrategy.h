@@ -47,21 +47,22 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
                 bool hydrationSucceeded,
                 CacheLookupResult whenInvalid)
         {
-            if (storeHit) {
-                if (validEntry) {
-                    return Hit;
-                } else {
-                    if (hydrationSucceeded) {
-                        return Refresh;
-                    } else {
+            if (storeHit)
+            {
+                if (validEntry) { return Hit; }
+                else
+                {
+                    if (hydrationSucceeded) { return Refresh; }
+                    else
+                    {
                         return whenInvalid;
                     }
                 }
             }
 
-            if (hydrationSucceeded) {
-                return Miss;
-            } else {
+            if (hydrationSucceeded) { return Miss; }
+            else
+            {
                 return NotFound;
             }
         }

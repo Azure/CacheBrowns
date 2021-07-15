@@ -19,9 +19,15 @@ class FakeDataSource : public ICacheDataSource<std::string, std::string>
 {
     std::map<std::string, std::string> fakeFiles = {{"foo", "foo"}, {"bar", "bar"}};
 
-    auto Retrieve(const std::string& key) -> std::tuple<bool, std::string> override { return {true, fakeFiles[key]}; }
+    auto Retrieve(const std::string& key) -> std::tuple<bool, std::string> override
+    {
+        return {true, fakeFiles[key]};
+    }
 
-    auto IsValid(const std::string& key, const std::string& value) -> bool override { return key != "foo"; }
+    auto IsValid(const std::string& key, const std::string& value) -> bool override
+    {
+        return key != "foo";
+    }
 };
 
 TEST_CASE("placeholder", "[placeholder]")

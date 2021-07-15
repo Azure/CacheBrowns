@@ -51,13 +51,17 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
         Value datum;
         std::tie(found, datum) = cacheDataStore->Get(key);
 
-        if (found) {
+        if (found)
+        {
             valid = cacheDataRetriever->IsValid(key, datum);
 
-            if (!valid || invalidEntryOverrides.find(key) != invalidEntryOverrides.end()) {
+            if (!valid || invalidEntryOverrides.find(key) != invalidEntryOverrides.end())
+            {
                 std::tie(wasHydrated, datum) = TryHydrate(key);
             }
-        } else {
+        }
+        else
+        {
             std::tie(wasHydrated, datum) = TryHydrate(key);
         }
 
@@ -69,7 +73,8 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
     {
         auto [wasRetrieved, retrievedValue] = cacheDataRetriever->Retrieve(key);
 
-        if (wasRetrieved) {
+        if (wasRetrieved)
+        {
             this->cacheDataStore->Set(key, retrievedValue);
             invalidEntryOverrides.erase(key);
         }
