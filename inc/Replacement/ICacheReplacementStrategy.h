@@ -1,8 +1,10 @@
 #ifndef CACHEBROWNS_ICACHEREPLACEMENTSTRATEGY_H
 #define CACHEBROWNS_ICACHEREPLACEMENTSTRATEGY_H
 
-namespace Microsoft::Azure::CacheBrowns
+namespace Microsoft::Azure::CacheBrowns::Replacement
 {
+    using namespace Hydration;
+
     template<typename Key, typename Value>
     class ICacheReplacementStrategy
     {
@@ -15,6 +17,6 @@ namespace Microsoft::Azure::CacheBrowns
 
         virtual void Flush() = 0;
     };
-}
+}// namespace Microsoft::Azure::CacheBrowns::Replacement
 
-#endif //CACHEBROWNS_ICACHEREPLACEMENTSTRATEGY_H
+#endif//CACHEBROWNS_ICACHEREPLACEMENTSTRATEGY_H

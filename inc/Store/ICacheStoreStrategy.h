@@ -3,7 +3,7 @@
 #ifndef CACHEBROWNS_ICACHESTORESTRATEGY_H
 #define CACHEBROWNS_ICACHESTORESTRATEGY_H
 
-namespace Microsoft::Azure::CacheBrowns
+namespace Microsoft::Azure::CacheBrowns::Store
 {
     template<typename Key, typename Value>
     class ICacheStoreStrategy
@@ -18,6 +18,6 @@ namespace Microsoft::Azure::CacheBrowns
 
         virtual void Flush() = 0;
     };
-}
+}// namespace Microsoft::Azure::CacheBrowns::Store
 
-#endif //CACHEBROWNS_ICACHESTORESTRATEGY_H
+#endif//CACHEBROWNS_ICACHESTORESTRATEGY_H

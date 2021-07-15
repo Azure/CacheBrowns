@@ -36,51 +36,54 @@ namespace Microsoft::Azure::CacheBrowns
     };
 
     template<typename Key, typename Value>
-    PurgableCache<Key, Value>::PurgableCache(
-            ManagedCache::CacheReplacementStrategy &replacementStrategy)
-            : cacheReplacementStrategy(replacementStrategy)
+    PurgableCache<Key, Value>::PurgableCache(ManagedCache::CacheReplacementStrategy& replacementStrategy) :
+        cacheReplacementStrategy(replacementStrategy)
     {
-
     }
 
     template<typename Key, typename Value>
-    PurgableCache<Key, Value>::PurgableCache(std::unique_ptr<ICacheHydrationStrategy<Key, Value>> &hydrator)
-            : cacheReplacementStrategy(std::make_unique<NoReplacement<Key, Value>>(hydrator))
+    PurgableCache<Key, Value>::PurgableCache(std::unique_ptr<ICacheHydrationStrategy<Key, Value>>& hydrator) :
+        cacheReplacementStrategy(std::make_unique<NoReplacement<Key, Value>>(hydrator))
     {
-
     }
 
     template<typename Key, typename Value>
-    std::tuple <CacheLookupResult, Value> PurgableCache<Key, Value>::Get(const Key &key) {
+    std::tuple<CacheLookupResult, Value> PurgableCache<Key, Value>::Get(const Key& key)
+    {
         return cacheReplacementStrategy->Get(key);
     }
 
     template<typename Key, typename Value>
-    void PurgableCache<Key, Value>::Flush() {
+    void PurgableCache<Key, Value>::Flush()
+    {
         cacheReplacementStrategy->Flush();
     }
 
     template<typename Key, typename Value>
-    void PurgableCache<Key, Value>::Evict(const Key &key) {
+    void PurgableCache<Key, Value>::Evict(const Key& key)
+    {
         cacheReplacementStrategy->Delete(key);
     }
 
     template<typename Key, typename Value>
-    bool PurgableCache<Key, Value>::Replace(const Key &key) {
+    bool PurgableCache<Key, Value>::Replace(const Key& key)
+    {
         cacheReplacementStrategy->Delete(key);
         cacheReplacementStrategy->Get(key);
     }
 
     template<typename Key, typename Value>
-    bool PurgableCache<Key, Value>::Refresh(const Key &key) {
+    bool PurgableCache<Key, Value>::Refresh(const Key& key)
+    {
         cacheReplacementStrategy->Invalidate(key);
         cacheReplacementStrategy->Get(key);
     }
 
     template<typename Key, typename Value>
-    void PurgableCache<Key, Value>::Invalidate(const Key &key) {
+    void PurgableCache<Key, Value>::Invalidate(const Key& key)
+    {
         cacheReplacementStrategy->Invalidate(key);
     }
-}
+}// namespace Microsoft::Azure::CacheBrowns
 
-#endif //CACHEBROWNS_PURGABLECACHE_H
+#endif//CACHEBROWNS_PURGABLECACHE_H

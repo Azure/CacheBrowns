@@ -11,6 +11,9 @@
 
 namespace Microsoft::Azure::CacheBrowns
 {
+    using namespace Hydration;
+    using namespace Replacement;
+
     template<typename Key, typename Value>
     class ManagedCache final : public IManagedCache<Key, Value>
     {
@@ -19,7 +22,6 @@ namespace Microsoft::Azure::CacheBrowns
         CacheReplacementStrategy cacheReplacementStrategy;
 
     public:
-
         explicit ManagedCache(CacheReplacementStrategy& replacementStrategy);
 
         explicit ManagedCache(std::unique_ptr<ICacheHydrationStrategy<Key, Value>>& hydrator);
@@ -30,29 +32,28 @@ namespace Microsoft::Azure::CacheBrowns
     };
 
     template<typename Key, typename Value>
-    ManagedCache<Key, Value>::ManagedCache(
-            ManagedCache::CacheReplacementStrategy &replacementStrategy)
-        : cacheReplacementStrategy(replacementStrategy)
+    ManagedCache<Key, Value>::ManagedCache(ManagedCache::CacheReplacementStrategy& replacementStrategy) :
+        cacheReplacementStrategy(replacementStrategy)
     {
-
     }
 
     template<typename Key, typename Value>
-    ManagedCache<Key, Value>::ManagedCache(std::unique_ptr<ICacheHydrationStrategy<Key, Value>> &hydrator)
-            : cacheReplacementStrategy(std::make_unique<NoReplacement<Key, Value>>(hydrator))
+    ManagedCache<Key, Value>::ManagedCache(std::unique_ptr<ICacheHydrationStrategy<Key, Value>>& hydrator) :
+        cacheReplacementStrategy(std::make_unique<NoReplacement<Key, Value>>(hydrator))
     {
-
     }
 
     template<typename Key, typename Value>
-    std::tuple <CacheLookupResult, Value> ManagedCache<Key, Value>::Get(const Key &key) {
+    std::tuple<CacheLookupResult, Value> ManagedCache<Key, Value>::Get(const Key& key)
+    {
         return cacheReplacementStrategy->Get(key);
     }
 
     template<typename Key, typename Value>
-    void ManagedCache<Key, Value>::Flush() {
+    void ManagedCache<Key, Value>::Flush()
+    {
         cacheReplacementStrategy->Flush();
     }
-}
+}// namespace Microsoft::Azure::CacheBrowns
 
-#endif //CACHEBROWNS_MANAGEDCACHE_H
+#endif//CACHEBROWNS_MANAGEDCACHE_H

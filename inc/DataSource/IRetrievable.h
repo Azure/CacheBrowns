@@ -3,7 +3,7 @@
 #ifndef CACHEBROWNS_IRETRIEVABLE_H
 #define CACHEBROWNS_IRETRIEVABLE_H
 
-namespace Microsoft::Azure::CacheBrowns
+namespace Microsoft::Azure::CacheBrowns::DataSource
 {
     template<typename Key, typename Value>
     class IRetrievable
@@ -11,6 +11,6 @@ namespace Microsoft::Azure::CacheBrowns
     public:
         virtual std::tuple<bool, Value> Retrieve(const Key& key) = 0;
     };
-}
+}// namespace Microsoft::Azure::CacheBrowns::DataSource
 
-#endif //CACHEBROWNS_IRETRIEVABLE_H
+#endif//CACHEBROWNS_IRETRIEVABLE_H

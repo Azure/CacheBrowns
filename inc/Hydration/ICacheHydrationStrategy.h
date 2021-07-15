@@ -1,7 +1,7 @@
 #ifndef CACHEBROWNS_ICACHEHYDRATIONSTRATEGY_H
 #define CACHEBROWNS_ICACHEHYDRATIONSTRATEGY_H
 
-namespace Microsoft::Azure::CacheBrowns
+namespace Microsoft::Azure::CacheBrowns::Hydration
 {
     /// <summary>
     /// Grants insight into what happened during cache retrieval for performance tracking and debugging purposes.
@@ -47,63 +47,57 @@ namespace Microsoft::Azure::CacheBrowns
                 bool hydrationSucceeded,
                 CacheLookupResult whenInvalid)
         {
-            if (storeHit)
-            {
-                if (validEntry)
-                {
+            if (storeHit) {
+                if (validEntry) {
                     return Hit;
-                }
-                else
-                {
-                    if (hydrationSucceeded)
-                    {
+                } else {
+                    if (hydrationSucceeded) {
                         return Refresh;
-                    }
-                    else
-                    {
+                    } else {
                         return whenInvalid;
                     }
                 }
             }
 
-            if (hydrationSucceeded)
-            {
+            if (hydrationSucceeded) {
                 return Miss;
-            }
-            else
-            {
+            } else {
                 return NotFound;
             }
         }
-    };
+    };// namespace impl
 
     template<InvalidCacheEntryBehavior whenInvalid>
     CacheLookupResult FindCacheLookupResultWithSemantics(bool storeHit, bool validEntry, bool hydrationSucceeded);
 
     template<>
-    CacheLookupResult FindCacheLookupResultWithSemantics<InvalidCacheEntryBehavior::ReturnNotValid>
-            (bool storeHit, bool validEntry, bool hydrationSucceeded)
+    CacheLookupResult FindCacheLookupResultWithSemantics<InvalidCacheEntryBehavior::ReturnNotValid>(
+            bool storeHit,
+            bool validEntry,
+            bool hydrationSucceeded)
     {
         return impl::FindCacheLookupResultWithSemantics(storeHit, validEntry, hydrationSucceeded, NotValid);
     }
 
     template<>
-    CacheLookupResult FindCacheLookupResultWithSemantics<InvalidCacheEntryBehavior::ReturnStale>
-            (bool storeHit, bool validEntry, bool hydrationSucceeded)
+    CacheLookupResult FindCacheLookupResultWithSemantics<InvalidCacheEntryBehavior::ReturnStale>(
+            bool storeHit,
+            bool validEntry,
+            bool hydrationSucceeded)
     {
         return impl::FindCacheLookupResultWithSemantics(storeHit, validEntry, hydrationSucceeded, Stale);
     }
 
     template<InvalidCacheEntryBehavior whenInvalid, typename Value>
     std::tuple<CacheLookupResult, Value> CreateCacheLookupResult(
-            bool storeHit, bool validEntry, bool hydrationSucceeded, Value value)
+            bool storeHit,
+            bool validEntry,
+            bool hydrationSucceeded,
+            Value value)
     {
         auto result = FindCacheLookupResultWithSemantics<whenInvalid>(storeHit, validEntry, hydrationSucceeded);
 
-        if (result == NotFound || result == NotValid)
-        {
-            return {result, Value{}};
-        }
+        if (result == NotFound || result == NotValid) { return {result, Value{}}; }
 
         return {result, value};
     }
@@ -123,6 +117,6 @@ namespace Microsoft::Azure::CacheBrowns
 
         virtual void Flush() = 0;
     };
-}
+}// namespace Microsoft::Azure::CacheBrowns::Hydration
 
-#endif //CACHEBROWNS_ICACHEHYDRATIONSTRATEGY_H
+#endif//CACHEBROWNS_ICACHEHYDRATIONSTRATEGY_H

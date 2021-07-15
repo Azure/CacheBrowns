@@ -7,7 +7,7 @@
 
 #include "ICacheStoreStrategy.h"
 
-namespace Microsoft::Azure::CacheBrowns
+namespace Microsoft::Azure::CacheBrowns::Store
 {
     template<typename Key, typename Value>
     class MemoryCacheStore : public ICacheStoreStrategy<Key, Value>
@@ -15,7 +15,6 @@ namespace Microsoft::Azure::CacheBrowns
         std::unordered_map<Key, Value> data;
 
     public:
-
         std::tuple<bool, Value> Get(const Key& key) override;
 
         void Set(const Key& key, const Value& value) override;
@@ -26,27 +25,31 @@ namespace Microsoft::Azure::CacheBrowns
     };
 
     template<typename Key, typename Value>
-    std::tuple<bool, Value> MemoryCacheStore<Key, Value>::Get(const Key &key) {
+    std::tuple<bool, Value> MemoryCacheStore<Key, Value>::Get(const Key& key)
+    {
         auto valueItr = data.find(key);
         auto found = valueItr == data.end();
 
-        return { found, found ? valueItr->second : Value{} };
+        return {found, found ? valueItr->second : Value{}};
     }
 
     template<typename Key, typename Value>
-    void MemoryCacheStore<Key, Value>::Set(const Key &key, const Value &value) {
+    void MemoryCacheStore<Key, Value>::Set(const Key& key, const Value& value)
+    {
         data[key] = value;
     }
 
     template<typename Key, typename Value>
-    bool MemoryCacheStore<Key, Value>::Delete(const Key &key) {
+    bool MemoryCacheStore<Key, Value>::Delete(const Key& key)
+    {
         return data.erase(key) > 0;
     }
 
     template<typename Key, typename Value>
-    void MemoryCacheStore<Key, Value>::Flush() {
+    void MemoryCacheStore<Key, Value>::Flush()
+    {
         data.clear();
     }
-}
+}// namespace Microsoft::Azure::CacheBrowns::Store
 
-#endif //CACHEBROWNS_MEMORYCACHESTORE_H
+#endif//CACHEBROWNS_MEMORYCACHESTORE_H
