@@ -90,8 +90,33 @@ Examples:
 
 ## Proposed implementation
 
-### Degrees of freedom
+A read-through cache that uses injected strategies to manage hydration and eviction transparently. Write-through can be
+achieved via a custom strategy that when combined with the read-through interface creates a one-way-data-flow.
 
-### Pre-canned implementations
+### Degrees of freedom & Pre-canned implementations
+
+Each degree of freedom in a read-through cache represents a domain of strategies that could be injected.
+
+1. Replacement
+1. Storage
+1. Hydration
+1. Invalid entry response
+1. Data source
+
+### Interface
+
+```
+IManagedCache<Key, Value>
+    Get(Key)
+    Flush()
+    
+ManagedCache<Key, Value> : IManagedCache<Key, Value>
+
+PurgableCache<Key, Value> : IManagedCache<Key, Value>
+    Evict(key)
+    Replace(key) // evict & reload
+    Refresh(key) // invalidate & reload
+    Invalidate(key)
+```
 
 ## Examples
