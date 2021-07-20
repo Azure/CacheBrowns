@@ -49,10 +49,16 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
         {
             if (storeHit)
             {
-                if (validEntry) { return Hit; }
+                if (validEntry)
+                {
+                    return Hit;
+                }
                 else
                 {
-                    if (hydrationSucceeded) { return Refresh; }
+                    if (hydrationSucceeded)
+                    {
+                        return Refresh;
+                    }
                     else
                     {
                         return whenInvalid;
@@ -60,7 +66,10 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
                 }
             }
 
-            if (hydrationSucceeded) { return Miss; }
+            if (hydrationSucceeded)
+            {
+                return Miss;
+            }
             else
             {
                 return NotFound;
@@ -98,7 +107,10 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
     {
         auto result = FindCacheLookupResultWithSemantics<whenInvalid>(storeHit, validEntry, hydrationSucceeded);
 
-        if (result == NotFound || result == NotValid) { return {result, Value{}}; }
+        if (result == NotFound || result == NotValid)
+        {
+            return {result, Value{}};
+        }
 
         return {result, value};
     }

@@ -9,7 +9,7 @@ namespace Microsoft::Azure::CacheBrowns::Store
     class ICacheStoreStrategy
     {
     public:
-        // TODO: Iterator instead?
+        // TODO: Iterator instead
         virtual std::tuple<bool, Value> Get(const Key& key) = 0;
 
         virtual void Set(const Key& key, const Value& value) = 0;

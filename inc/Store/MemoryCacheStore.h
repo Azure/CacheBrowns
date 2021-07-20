@@ -3,9 +3,10 @@
 #ifndef CACHEBROWNS_MEMORYCACHESTORE_H
 #define CACHEBROWNS_MEMORYCACHESTORE_H
 
-#include <unordered_map>
-
 #include "ICacheStoreStrategy.h"
+
+#include <algorithm>
+#include <unordered_map>
 
 namespace Microsoft::Azure::CacheBrowns::Store
 {

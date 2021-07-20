@@ -5,6 +5,8 @@
 
 #include "IRetrievable.h"
 
+#include <functional>
+
 namespace Microsoft::Azure::CacheBrowns::DataSource
 {
     using namespace DataSource;

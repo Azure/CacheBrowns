@@ -6,6 +6,8 @@
 #include "../DataSource/ICacheDataSource.h"
 #include "../Store/ICacheStoreStrategy.h"
 #include "ICacheHydrationStrategy.h"
+
+#include <memory>
 #include <set>
 
 namespace Microsoft::Azure::CacheBrowns::Hydration
@@ -47,7 +49,7 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
     std::tuple<CacheLookupResult, Value> PullCacheHydrator<Key, Value, whenInvalid>::Get(const Key& key)
     {
-        bool found, wasHydrated, valid;
+        bool found, wasHydrated = false, valid = false;
         Value datum;
         std::tie(found, datum) = cacheDataStore->Get(key);
 
