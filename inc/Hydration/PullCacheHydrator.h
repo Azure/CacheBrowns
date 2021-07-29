@@ -44,6 +44,13 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
 
     private:
         std::tuple<bool, Value> TryHydrate(const Key& key);
+
+        std::tuple<bool, Value> TryHydrate(const Key& key, Value currentValue);
+
+        std::tuple<bool, Value> PullCacheHydrator<Key, Value, whenInvalid>::HandleRetrieveResult(
+                const Key& key,
+                bool wasRetrieved,
+                Value retrievedValue);
     };
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
@@ -59,7 +66,7 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
 
             if (!valid || invalidEntryOverrides.find(key) != invalidEntryOverrides.end())
             {
-                std::tie(wasHydrated, datum) = TryHydrate(key);
+                std::tie(wasHydrated, datum) = TryHydrate(key, datum);
             }
         }
         else
@@ -75,14 +82,32 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
     {
         auto [wasRetrieved, retrievedValue] = cacheDataRetriever->Retrieve(key);
 
+        return HandleRetrieveResult(key, wasRetrieved, retrievedValue);
+    }
+
+    template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
+    std::tuple<bool, Value> PullCacheHydrator<Key, Value, whenInvalid>::HandleRetrieveResult(
+            const Key& key,
+            bool wasRetrieved,
+            Value retrievedValue)
+    {
         if (wasRetrieved)
         {
             this->cacheDataStore->Set(key, retrievedValue);
-            invalidEntryOverrides.erase(key);
+            this->invalidEntryOverrides.erase(key);
         }
 
         return {wasRetrieved, retrievedValue};
     }
+
+    template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
+    std::tuple<bool, Value> PullCacheHydrator<Key, Value, whenInvalid>::TryHydrate(const Key& key, Value currentValue)
+    {
+        bool wasRetrieved = cacheDataRetriever->Retrieve(key, currentValue);
+
+        return HandleRetrieveResult(key, wasRetrieved, currentValue);
+    }
+
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
     void PullCacheHydrator<Key, Value, whenInvalid>::Invalidate(const Key& key)

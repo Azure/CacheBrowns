@@ -61,7 +61,9 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
         ~PollingCacheHydrator();
 
     private:
-        auto TryHydrate(const Key& key, bool inCache) -> std::tuple<bool, Value>;
+        auto TryHydrateForPoll(const Key& key, Value previousValue) -> std::tuple<bool, Value>;
+        auto TryHydrate(const Key& key) -> std::tuple<bool, Value>;
+        void Hydrate(const Key& key, Value& retrievedValue);
         void Poll();
     };
 
@@ -86,37 +88,53 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
             {
                 // Unlock, we're done reading at this point & don't want to block the write operation
                 readLock.unlock();
-                std::tie(wasHydrated, datum) = TryHydrate(key, false);
+                std::tie(wasHydrated, datum) = TryHydrate(key);
             }
         }
 
         return CacheBrowns::CreateCacheLookupResult<whenInvalid, Value>(found, valid, wasHydrated, datum);
     }
 
+    // Intended to be used from polling thread. Since that thread already acquires a lock, this function is lockless
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    auto PollingCacheHydrator<Key, Value, whenInvalid>::TryHydrate(const Key& key, bool inCache)
+    auto PollingCacheHydrator<Key, Value, whenInvalid>::TryHydrateForPoll(const Key& key, Value previousValue)
             -> std::tuple<bool, Value>
+    {
+        auto wasRetrieved = cacheDataRetriever->Retrieve(key, previousValue);
+
+        if (wasRetrieved)
+        {
+            Hydrate(key, previousValue);
+        }
+        else
+        {
+            // Value in cache, but polling operation failed meaning the value is now stale
+            invalidEntries.insert(key);
+        }
+
+        return {wasRetrieved, previousValue};
+    }
+
+    template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
+    auto PollingCacheHydrator<Key, Value, whenInvalid>::TryHydrate(const Key& key) -> std::tuple<bool, Value>
     {
         auto [wasRetrieved, retrievedValue] = cacheDataRetriever->Retrieve(key);
 
+        if (wasRetrieved)
         {
             std::unique_lock writeLock(dataSourceMutex);
-            if (wasRetrieved)
-            {
-                keys.insert(key);
-                cacheDataStore->Set(key, retrievedValue);
-            }
-            else
-            {
-                // Value in cache, but polling operation failed meaning the value is now stale
-                if (inCache)
-                {
-                    invalidEntries.insert(key);
-                }
-            }
+            Hydrate(key, retrievedValue);
         }
 
         return {wasRetrieved, retrievedValue};
+    }
+
+    template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
+    void PollingCacheHydrator<Key, Value, whenInvalid>::Hydrate(const Key& key, Value& retrievedValue)
+    {
+        keys.insert(key);
+        cacheDataStore->Set(key, retrievedValue);
+        invalidEntries.erase(key);
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
@@ -129,15 +147,19 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
     void PollingCacheHydrator<Key, Value, whenInvalid>::Delete(const Key& key)
     {
+        std::unique_lock writeLock(dataSourceMutex);
         keys.erase(key);
         cacheDataStore->Delete(key);
+        invalidEntries.erase(key);
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
     void PollingCacheHydrator<Key, Value, whenInvalid>::Flush()
     {
+        std::unique_lock writeLock(dataSourceMutex);
         keys.clear();
         cacheDataStore->Flush();
+        invalidEntries.clear();
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
@@ -169,14 +191,26 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
         // upgrade this or any other implementation to accept async data sources.
         while (activelyPolling)
         {
-            for (const auto& key : keys)
             {
-                if (!activelyPolling)
-                {
-                    break;
-                }
+                // TODO: This is a really expensive lock that can cause lag spikes. Evaluate other options
+                // e.g.: Copy keys under lock. Retrieve value not under lock. Acquire lock, update if still exists
+                // this creates an implicit queue with fast inserts, because if data races did occur (remember, they
+                // can only be deletes in this paradigm as inserts don't need to be immediately polled) we respect the
+                // prior event. If the event comes mid update, it will be delayed acquiring it's lock and immediately
+                // delete whatever data we just wrote. In this case we maintain coherency while limiting the max block
+                // delay. We don't gain the ability to interrupt retrieves but that cost is small. If we needed, we
+                // could also check if a delete occurred before performing a read to reduce unnecessary retrieves.
+                std::unique_lock writeLock(dataSourceMutex);
 
-                TryHydrate(key, true);
+                for (const auto& key : keys)
+                {
+                    if (!activelyPolling)
+                    {
+                        break;
+                    }
+
+                    TryHydrateForPoll(key, std::get<1>(cacheDataStore->Get(key)));
+                }
             }
 
             // Ignore spurious wake-ups. Used instead of sleep to allow for fast-kill

@@ -16,7 +16,6 @@ namespace Microsoft::Azure::CacheBrowns::DataSource
     {
 
     public:
-        virtual std::tuple<bool, Value> Retrieve(const Key& key) = 0;
 
         virtual bool IsValid(const Key& key, const Value& value) = 0;
     };
