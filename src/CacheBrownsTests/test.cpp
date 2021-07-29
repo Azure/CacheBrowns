@@ -49,6 +49,7 @@ TEST_CASE("PullTest", "[PullTest]")
     REQUIRE(managedCache != nullptr);
 }
 
+
 TEST_CASE("PollingTest", "[PollingTest]")
 {
     std::shared_ptr<ICacheStoreStrategy<std::string, std::string>> testStore =

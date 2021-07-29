@@ -1,4 +1,4 @@
-Checks: '-*,clang-diagnostic-*,llvm-*,misc-*,-misc-unused-parameters,-misc-non-private-member-variables-in-classes,-misc-no-recursion,readability-identifier-naming,modernize-*'
+Checks: '-*,clang-diagnostic-*,llvm-*,misc-*,-misc-unused-parameters,-misc-non-private-member-variables-in-classes,-misc-no-recursion,readability-identifier-naming,modernize-*,readability-redundant-access-specifier'
 CheckOptions:
   - key: readability-identifier-naming.ClassCase
     value: CamelCase

@@ -39,6 +39,7 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
         std::thread pollingThread;
         std::set<Key> invalidEntries;
         std::chrono::milliseconds pollRate;
+        std::function<void(CacheLookupResult)> pollResultInstrumentationCallback;
 
         // TODO: Using iterators this isn't necessary to track, but implementing the generically isn't necessary for PoC
         std::set<Key> keys;
@@ -47,7 +48,8 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
         PollingCacheHydrator(
                 CacheStorePtr dataStore,
                 CacheDataRetrieverPtr& dataRetriever,
-                std::chrono::milliseconds pollEvery);
+                std::chrono::milliseconds pollEvery,
+                std::function<void(CacheLookupResult)> pollResultInstrumentation = [](CacheLookupResult) {});
 
         auto Get(const Key& key) -> std::tuple<CacheLookupResult, Value> override;
 
@@ -64,10 +66,11 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
         ~PollingCacheHydrator();
 
     private:
-        auto TryHydrateForPoll(const Key& key, Value previousValue) -> std::tuple<bool, Value>;
         auto TryHydrate(const Key& key) -> std::tuple<bool, Value>;
         void Hydrate(const Key& key, Value& retrievedValue);
         void Poll();
+        std::set<Key> GetCopyOfKeys() const;
+        void TryRefresh(const Key& key);
     };
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
@@ -96,26 +99,6 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
         }
 
         return CacheBrowns::CreateCacheLookupResult<whenInvalid, Value>(found, valid, wasHydrated, datum);
-    }
-
-    // Intended to be used from polling thread. Since that thread already acquires a lock, this function is lockless
-    template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    auto PollingCacheHydrator<Key, Value, whenInvalid>::TryHydrateForPoll(const Key& key, Value previousValue)
-            -> std::tuple<bool, Value>
-    {
-        auto wasRetrieved = cacheDataRetriever->Retrieve(key, previousValue);
-
-        if (wasRetrieved)
-        {
-            Hydrate(key, previousValue);
-        }
-        else
-        {
-            // Value in cache, but polling operation failed meaning the value is now stale
-            invalidEntries.insert(key);
-        }
-
-        return {wasRetrieved, previousValue};
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
@@ -167,9 +150,11 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
     PollingCacheHydrator<Key, Value, whenInvalid>::PollingCacheHydrator(
             PollingCacheHydrator::CacheStorePtr dataStore,
             PollingCacheHydrator::CacheDataRetrieverPtr& dataRetriever,
-            std::chrono::milliseconds pollEvery) :
+            std::chrono::milliseconds pollEvery,
+            std::function<void(CacheLookupResult)> pollResultInstrumentation) :
         cacheDataStore(std::move(dataStore)),
-        cacheDataRetriever(std::move(dataRetriever)), pollRate(pollEvery)
+        cacheDataRetriever(std::move(dataRetriever)), pollRate(pollEvery),
+        pollResultInstrumentationCallback(std::move(pollResultInstrumentation))
     {
         pollingThread = std::thread(&PollingCacheHydrator::Poll, this);
     }
@@ -192,31 +177,67 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
         // upgrade this or any other implementation to accept async data sources.
         while (activelyPolling)
         {
+            auto keysCopy = GetCopyOfKeys();
+
+            for (const auto& key : keysCopy)
             {
-                // TODO: This is a really expensive lock that can cause lag spikes. Evaluate other options
-                // e.g.: Copy keys under lock. Retrieve value not under lock. Acquire lock, update if still exists
-                // this creates an implicit queue with fast inserts, because if data races did occur (remember, they
-                // can only be deletes in this paradigm as inserts don't need to be immediately polled) we respect the
-                // prior event. If the event comes mid update, it will be delayed acquiring it's lock and immediately
-                // delete whatever data we just wrote. In this case we maintain coherency while limiting the max block
-                // delay. We don't gain the ability to interrupt retrieves but that cost is small. If we needed, we
-                // could also check if a delete occurred before performing a read to reduce unnecessary retrieves.
-                std::unique_lock writeLock(dataSourceMutex);
-
-                for (const auto& key : keys)
+                if (!activelyPolling)
                 {
-                    if (!activelyPolling)
-                    {
-                        break;
-                    }
-
-                    TryHydrateForPoll(key, std::get<1>(cacheDataStore->Get(key)));
+                    break;
                 }
+
+                TryRefresh(key);
+
+                // TODO: Allow callback for instrumentation of polling thread.
             }
 
             // Ignore spurious wake-ups. Used instead of sleep to allow for fast-kill
             cv.wait_for(lock, pollRate, [&] { return !activelyPolling; });
         }
+    }
+
+    template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
+    void PollingCacheHydrator<Key, Value, whenInvalid>::TryRefresh(const Key& key)
+    {
+        bool wasHydrated = false, valid = false;
+        std::shared_lock readLock(dataSourceMutex);
+
+        bool found = keys.find(key) != keys.end();
+
+        // If value is already deleted, don't issue a superfluous retrieve
+        if (found)
+        {
+            auto previousValue = std::get<1>(cacheDataStore->Get(key));
+            auto wasRetrieved = cacheDataRetriever->Retrieve(key, previousValue);
+
+            readLock.unlock();
+
+            std::unique_lock writeLock(dataSourceMutex);
+
+            // Value could have been deleted during retrieval, verify update should still occur
+            valid = keys.find(key) != keys.end();
+
+            if (wasRetrieved && valid)
+            {
+                wasHydrated = true;
+                Hydrate(key, previousValue);
+            }
+            else
+            {
+                // Value in cache, but polling operation failed meaning the value is now stale
+                invalidEntries.insert(key);
+            }
+        }
+
+        pollResultInstrumentationCallback(
+                CacheBrowns::FindCacheLookupResultWithSemantics<whenInvalid>(found, valid, wasHydrated));
+    }
+
+    template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
+    std::set<Key> PollingCacheHydrator<Key, Value, whenInvalid>::GetCopyOfKeys() const
+    {
+        std::shared_lock readLock(dataSourceMutex);
+        return keys;
     }
 
 }// namespace Microsoft::Azure::CacheBrowns::Hydration
