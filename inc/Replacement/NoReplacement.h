@@ -13,11 +13,13 @@ namespace Microsoft::Azure::CacheBrowns::Replacement
     class NoReplacement : public ICacheReplacementStrategy<Key, Value>
     {
         typedef std::unique_ptr<ICacheHydrationStrategy<Key, Value>> Hydrator;
+        typedef std::shared_ptr<IPrunable<Key>> cacheStorePtr;
 
         Hydrator cacheHydrator;
+        cacheStorePtr dataStore;
 
     public:
-        explicit NoReplacement(Hydrator& hydrator);
+        explicit NoReplacement(Hydrator& hydrator, cacheStorePtr store);
 
         std::tuple<CacheLookupResult, Value> Get(const Key& key);
 
@@ -29,7 +31,8 @@ namespace Microsoft::Azure::CacheBrowns::Replacement
     };
 
     template<typename Key, typename Value>
-    NoReplacement<Key, Value>::NoReplacement(NoReplacement::Hydrator& hydrator) : cacheHydrator(std::move(hydrator))
+    NoReplacement<Key, Value>::NoReplacement(NoReplacement::Hydrator& hydrator, cacheStorePtr store) :
+        cacheHydrator(std::move(hydrator)), dataStore(store)
     {
     }
 
@@ -42,19 +45,21 @@ namespace Microsoft::Azure::CacheBrowns::Replacement
     template<typename Key, typename Value>
     void NoReplacement<Key, Value>::Invalidate(const Key& key)
     {
-        cacheHydrator->Invalidate(key);
+        cacheHydrator->HandleInvalidate(key);
     }
 
     template<typename Key, typename Value>
     void NoReplacement<Key, Value>::Delete(const Key& key)
     {
-        cacheHydrator->Delete(key);
+        dataStore->Delete(key);
+        cacheHydrator->HandleDelete(key);
     }
 
     template<typename Key, typename Value>
     void NoReplacement<Key, Value>::Flush()
     {
-        cacheHydrator->Flush();
+        dataStore->Flush();
+        cacheHydrator->HandleFlush();
     }
 }// namespace Microsoft::Azure::CacheBrowns::Replacement
 

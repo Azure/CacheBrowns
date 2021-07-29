@@ -5,16 +5,19 @@
 
 #include "../DataSource/ICacheDataSource.h"
 #include "../Store/ICacheStoreStrategy.h"
+#include "../Store/IHydratable.h"
 #include "ICacheHydrationStrategy.h"
 
 #include <chrono>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <shared_mutex>
 
 namespace Microsoft::Azure::CacheBrowns::Hydration
 {
     using namespace Microsoft::Azure::CacheBrowns::DataSource;
+    using namespace Microsoft::Azure::CacheBrowns::Store;
 
     template<
             typename Key,
@@ -22,7 +25,7 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
             InvalidCacheEntryBehavior whenInvalid = InvalidCacheEntryBehavior::ReturnNotValid>
     class PollingCacheHydrator final : public ICacheHydrationStrategy<Key, Value, whenInvalid>
     {
-        using CacheStorePtr = std::unique_ptr<ICacheStoreStrategy<Key, Value>>;
+        using CacheStorePtr = std::shared_ptr<IHydratable<Key, Value>>;
         using CacheDataRetrieverPtr = std::unique_ptr<IRetrievable<Key, Value>>;
 
         CacheStorePtr cacheDataStore;
@@ -42,17 +45,17 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
 
     public:
         PollingCacheHydrator(
-                CacheStorePtr& dataStore,
+                CacheStorePtr dataStore,
                 CacheDataRetrieverPtr& dataRetriever,
                 std::chrono::milliseconds pollEvery);
 
         auto Get(const Key& key) -> std::tuple<CacheLookupResult, Value> override;
 
-        void Invalidate(const Key& key) override;
+        void HandleInvalidate(const Key& key) override;
 
-        void Delete(const Key& key) override;
+        void HandleDelete(const Key& key) override;
 
-        void Flush() override;
+        void HandleFlush() override;
 
         /// Polling thread will block object destruct, sends kill and sleep interrupt signals.
         /// NOTE: This will not immediately result in thread destruct if a poll operation is currently in progress.
@@ -138,33 +141,31 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    void PollingCacheHydrator<Key, Value, whenInvalid>::Invalidate(const Key& key)
+    void PollingCacheHydrator<Key, Value, whenInvalid>::HandleInvalidate(const Key& key)
     {
         std::unique_lock writeLock(dataSourceMutex);
         invalidEntries.insert(key);
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    void PollingCacheHydrator<Key, Value, whenInvalid>::Delete(const Key& key)
+    void PollingCacheHydrator<Key, Value, whenInvalid>::HandleDelete(const Key& key)
     {
         std::unique_lock writeLock(dataSourceMutex);
         keys.erase(key);
-        cacheDataStore->Delete(key);
         invalidEntries.erase(key);
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    void PollingCacheHydrator<Key, Value, whenInvalid>::Flush()
+    void PollingCacheHydrator<Key, Value, whenInvalid>::HandleFlush()
     {
         std::unique_lock writeLock(dataSourceMutex);
         keys.clear();
-        cacheDataStore->Flush();
         invalidEntries.clear();
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
     PollingCacheHydrator<Key, Value, whenInvalid>::PollingCacheHydrator(
-            PollingCacheHydrator::CacheStorePtr& dataStore,
+            PollingCacheHydrator::CacheStorePtr dataStore,
             PollingCacheHydrator::CacheDataRetrieverPtr& dataRetriever,
             std::chrono::milliseconds pollEvery) :
         cacheDataStore(std::move(dataStore)),

@@ -1,15 +1,15 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 
 #include "../../inc/DataSource/ICacheDataSource.h"
-#include "../../inc/Hydration/PullCacheHydrator.h"
 #include "../../inc/Hydration/PollingCacheHydrator.h"
+#include "../../inc/Hydration/PullCacheHydrator.h"
 #include "../../inc/ManagedCache.h"
 #include "../../inc/Store/MemoryCacheStore.h"
 
+#include <chrono>
 #include <map>
 #include <memory>
 #include <string>
-#include <chrono>
 
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
@@ -35,26 +35,30 @@ class FakeDataSource : public ICacheDataSource<std::string, std::string>
 
 TEST_CASE("PullTest", "[PullTest]")
 {
-    std::unique_ptr<ICacheStoreStrategy<std::string, std::string>> testStore =
-            std::make_unique<MemoryCacheStore<std::string, std::string>>();
+    std::shared_ptr<ICacheStoreStrategy<std::string, std::string>> testStore =
+            std::make_shared<MemoryCacheStore<std::string, std::string>>();
     std::unique_ptr<ICacheDataSource<std::string, std::string>> testDataSource = std::make_unique<FakeDataSource>();
-    std::unique_ptr<ICacheHydrationStrategy<std::string, std::string>> testPull =
-            std::make_unique<PullCacheHydrator<std::string, std::string>>(testStore, testDataSource);
 
-    auto managedCache = std::make_unique<ManagedCache<std::string, std::string>>(testPull);
+    std::unique_ptr<ICacheHydrationStrategy<std::string, std::string>> testPull =
+            std::make_unique<PullCacheHydrator<std::string, std::string>>(
+                    std::reinterpret_pointer_cast<IHydratable<std::string, std::string>>(testStore), testDataSource);
+
+    auto managedCache = std::make_unique<ManagedCache<std::string, std::string>>(
+            testPull, std::reinterpret_pointer_cast<IPrunable<std::string>>(testStore));
 
     REQUIRE(managedCache != nullptr);
 }
 
 TEST_CASE("PollingTest", "[PollingTest]")
 {
-    std::unique_ptr<ICacheStoreStrategy<std::string, std::string>> testStore =
-            std::make_unique<MemoryCacheStore<std::string, std::string>>();
+    std::shared_ptr<ICacheStoreStrategy<std::string, std::string>> testStore =
+            std::make_shared<MemoryCacheStore<std::string, std::string>>();
     std::unique_ptr<IRetrievable<std::string, std::string>> testDataSource = std::make_unique<FakeDataSource>();
     std::unique_ptr<ICacheHydrationStrategy<std::string, std::string>> testPoll =
             std::make_unique<PollingCacheHydrator<std::string, std::string>>(testStore, testDataSource, 500ms);
 
-    auto managedCache = std::make_unique<ManagedCache<std::string, std::string>>(testPoll);
+    auto managedCache = std::make_unique<ManagedCache<std::string, std::string>>(
+            testPoll, std::reinterpret_pointer_cast<IPrunable<std::string>>(testStore));
 
     REQUIRE(managedCache != nullptr);
 }

@@ -21,7 +21,7 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
             InvalidCacheEntryBehavior whenInvalid = InvalidCacheEntryBehavior::ReturnNotValid>
     class PullCacheHydrator final : public ICacheHydrationStrategy<Key, Value, whenInvalid>
     {
-        typedef std::unique_ptr<ICacheStoreStrategy<Key, Value>> cacheStorePtr;
+        typedef std::shared_ptr<IHydratable<Key, Value>> cacheStorePtr;
         typedef std::unique_ptr<Microsoft::Azure::CacheBrowns::DataSource::ICacheDataSource<Key, Value>>
                 cacheDataSourcePtr;
 
@@ -32,15 +32,15 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
         std::set<Key> invalidEntryOverrides;
 
     public:
-        PullCacheHydrator(cacheStorePtr& dataStore, cacheDataSourcePtr& dataSource);
+        PullCacheHydrator(cacheStorePtr dataStore, cacheDataSourcePtr& dataSource);
 
         std::tuple<CacheLookupResult, Value> Get(const Key& key) override;
 
-        void Invalidate(const Key& key) override;
+        void HandleInvalidate(const Key& key) override;
 
-        void Delete(const Key& key) override;
+        void HandleDelete(const Key& key) override;
 
-        void Flush() override;
+        void HandleFlush() override;
 
     private:
         std::tuple<bool, Value> TryHydrate(const Key& key);
@@ -110,26 +110,26 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
 
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    void PullCacheHydrator<Key, Value, whenInvalid>::Invalidate(const Key& key)
+    void PullCacheHydrator<Key, Value, whenInvalid>::HandleInvalidate(const Key& key)
     {
         invalidEntryOverrides.insert(key);
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    void PullCacheHydrator<Key, Value, whenInvalid>::Delete(const Key& key)
+    void PullCacheHydrator<Key, Value, whenInvalid>::HandleDelete(const Key& key)
     {
-        cacheDataStore->Delete(key);
+        invalidEntryOverrides.erase(key);
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    void PullCacheHydrator<Key, Value, whenInvalid>::Flush()
+    void PullCacheHydrator<Key, Value, whenInvalid>::HandleFlush()
     {
-        cacheDataStore->Flush();
+        invalidEntryOverrides.clear();
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
     PullCacheHydrator<Key, Value, whenInvalid>::PullCacheHydrator(
-            PullCacheHydrator::cacheStorePtr& dataStore,
+            PullCacheHydrator::cacheStorePtr dataStore,
             PullCacheHydrator::cacheDataSourcePtr& dataSource) :
         cacheDataStore(std::move(dataStore)),
         cacheDataRetriever(std::move(dataSource))

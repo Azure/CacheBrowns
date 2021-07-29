@@ -17,7 +17,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(Catch2)
 
-add_executable(CacheBrownsTests src/CacheBrownsTests/test.cpp ${cachebrowns_src})
+add_executable(CacheBrownsTests src/CacheBrownsTests/test.cpp ${cachebrowns_src} inc/Store/IHydratable.h inc/Store/IPrunable.h)
 target_link_libraries(CacheBrownsTests PRIVATE Catch2::Catch2)
 
 target_include_directories(CacheBrownsTests PRIVATE ${Catch2}/include)

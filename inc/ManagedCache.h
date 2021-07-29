@@ -24,7 +24,9 @@ namespace Microsoft::Azure::CacheBrowns
     public:
         explicit ManagedCache(CacheReplacementStrategy& replacementStrategy);
 
-        explicit ManagedCache(std::unique_ptr<ICacheHydrationStrategy<Key, Value>>& hydrator);
+        explicit ManagedCache(
+                std::unique_ptr<ICacheHydrationStrategy<Key, Value>>& hydrator,
+                std::shared_ptr<IPrunable<Key>> cacheStorePtr);
 
         std::tuple<CacheLookupResult, Value> Get(const Key& key) override;
 
@@ -38,8 +40,10 @@ namespace Microsoft::Azure::CacheBrowns
     }
 
     template<typename Key, typename Value>
-    ManagedCache<Key, Value>::ManagedCache(std::unique_ptr<ICacheHydrationStrategy<Key, Value>>& hydrator) :
-        cacheReplacementStrategy(std::make_unique<NoReplacement<Key, Value>>(hydrator))
+    ManagedCache<Key, Value>::ManagedCache(
+            std::unique_ptr<ICacheHydrationStrategy<Key, Value>>& hydrator,
+            std::shared_ptr<IPrunable<Key>> cacheStorePtr) :
+        cacheReplacementStrategy(std::make_unique<NoReplacement<Key, Value>>(hydrator, cacheStorePtr))
     {
     }
 
