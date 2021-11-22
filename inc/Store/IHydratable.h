@@ -9,6 +9,8 @@ namespace Microsoft::Azure::CacheBrowns::Store
     class IHydratable
     {
     public:
+        virtual ~IHydratable() = default;
+
         // TODO: Iterator instead
         virtual std::tuple<bool, Value> Get(const Key& key) = 0;
 

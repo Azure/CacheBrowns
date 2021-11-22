@@ -11,7 +11,9 @@ namespace Microsoft::Azure::CacheBrowns::DataSource
     class IRetrievable
     {
     public:
-        typedef std::iterator<std::forward_iterator_tag, Key> KeyIterator;
+        using KeyIterator = std::iterator<std::forward_iterator_tag, Key>;
+
+        virtual ~IRetrievable() = default;
 
         virtual std::tuple<bool, Value> Retrieve(const Key& key) = 0;
 

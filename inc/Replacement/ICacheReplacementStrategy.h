@@ -9,6 +9,8 @@ namespace Microsoft::Azure::CacheBrowns::Replacement
     class ICacheReplacementStrategy
     {
     public:
+        virtual ~ICacheReplacementStrategy() = default;
+
         virtual std::tuple<CacheLookupResult, Value> Get(const Key& key) = 0;
 
         virtual void Invalidate(const Key& key) = 0;

@@ -11,6 +11,8 @@ namespace Microsoft::Azure::CacheBrowns::Store
     template<typename Key, typename Value>
     class ICacheStoreStrategy : public IHydratable<Key, Value>, IPrunable<Key>
     {
+    public:
+        virtual ~ICacheStoreStrategy() = default;
         // TODO: This has no clear purpose until the lambda factory init pattern is implemented.
     };
 }// namespace Microsoft::Azure::CacheBrowns::Store

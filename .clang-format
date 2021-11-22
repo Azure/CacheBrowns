@@ -2,7 +2,7 @@ BasedOnStyle: Microsoft
 AccessModifierOffset: -4
 AlignAfterOpenBracket: AlwaysBreak
 AlignConsecutiveAssignments: None
-AlignOperands: Align
+AlignOperands: AlignAfterOperator
 AllowAllArgumentsOnNextLine: false
 AllowAllConstructorInitializersOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: false
@@ -23,6 +23,7 @@ BreakInheritanceList: BeforeColon
 ColumnLimit: 120
 CompactNamespaces: false
 ContinuationIndentWidth: 8
+Cpp11BracedListStyle: false
 IncludeBlocks: Regroup
 IndentCaseLabels: true
 IndentPPDirectives: None
@@ -33,7 +34,7 @@ NamespaceIndentation: All
 ObjCSpaceAfterProperty: false
 ObjCSpaceBeforeProtocolList: true
 PointerAlignment: Left
-ReflowComments: false
+ReflowComments: true
 SpaceAfterCStyleCast: true
 SpaceAfterLogicalNot: false
 SpaceAfterTemplateKeyword: false

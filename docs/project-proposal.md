@@ -17,7 +17,7 @@
 
 ## Problem statement
 
-We've all heard that there are only 2 hard problems in computer science: naming thing, cache invalidation, and
+We've all heard that there are only 2 hard problems in computer science: naming things, cache invalidation, and
 off-by-one errors. This is an analysis on the way we contend with the challenges of cache invalidation, how they're
 suboptimal, and how we can improve them.
 
@@ -72,7 +72,7 @@ To address this, we should strive to provide a generic read-through cache that f
 store, but also the writes, evictions, and staleness checks that all lead to cache invalidation. As we will see later on
 in the examples, typical implementations don't actually require writes from the perspective of the application code. The
 fact that the commonly do is merely an unnecessary application of the cache-aside pattern. If your application isn't
-generating data bidirectionally with the SoR, then there's no need to support rights. Even in the case where writes or
+generating data bidirectionally with the SoR, then there's no need to support writes. Even in the case where writes or
 event driven invalidations are needed this does not need to be handled by the reading application logic, it can be
 injected into the managed cache (read: an instance of one-way-data-flow paradigm). A managed cache can satisfy these use
 cases so long as it provides the following functionality.

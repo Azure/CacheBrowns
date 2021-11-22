@@ -9,6 +9,8 @@ namespace Microsoft::Azure::CacheBrowns::Store
     class IPrunable
     {
     public:
+        virtual ~IPrunable() = default;
+
         virtual bool Delete(const Key& key) = 0;
 
         virtual void Flush() = 0;

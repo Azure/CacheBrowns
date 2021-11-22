@@ -16,7 +16,7 @@ namespace Microsoft::Azure::CacheBrowns::DataSource
     {
 
     public:
-
+        virtual ~ICacheDataSource() = default;
         virtual bool IsValid(const Key& key, const Value& value) = 0;
     };
 }// namespace Microsoft::Azure::CacheBrowns::DataSource
