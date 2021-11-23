@@ -33,6 +33,16 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
         Hit = 3
     };
 
+    inline bool CacheEntryCurrentlyPresent(CacheLookupResult result)
+    {
+        return result >= 0;
+    }
+
+    inline bool CacheEntryWasAlreadyPresent(CacheLookupResult result)
+    {
+        return result == CacheLookupResult::Stale || result == CacheLookupResult::Hit;
+    }
+
     enum InvalidCacheEntryBehavior
     {
         ReturnNotValid,

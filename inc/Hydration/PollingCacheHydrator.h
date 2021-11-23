@@ -190,7 +190,7 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
         std::mutex mutex;
         std::unique_lock<std::mutex> lock(mutex);
 
-        // This is an example of bulk polling. You could have implementations that maintain freshness on a per entry
+        // This is an example of bulk polling. You could have implementations that maintain freshness on a per-entry
         // basis or bucket basis if desired. Because the locks are only held for the final writes, you could also
         // upgrade this or any other implementation to accept async data sources.
 
@@ -204,8 +204,6 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
             }
 
             TryRefresh(key);
-
-            // TODO: Allow callback for instrumentation of polling thread.
         }
     }
 

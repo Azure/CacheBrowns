@@ -4,6 +4,7 @@
 #include "../../inc/Hydration/PollingCacheHydrator.h"
 #include "../../inc/Hydration/PullCacheHydrator.h"
 #include "../../inc/ManagedCache.h"
+#include "../../inc/Replacement/LeastRecentlyUsed.h"
 #include "../../inc/Store/MemoryCacheStore.h"
 
 #include <chrono>
@@ -20,11 +21,11 @@ using namespace std::chrono_literals;
 
 class FakeDataSource : public ICacheDataSource<std::string, std::string>
 {
-    std::map<std::string, std::string> fakeFiles = {{"foo", "foo"}, {"bar", "bar"}};
+    std::map<std::string, std::string> fakeFiles = { { "foo", "foo" }, { "bar", "bar" } };
 
     auto Retrieve(const std::string& key) -> std::tuple<bool, std::string> override
     {
-        return {true, fakeFiles[key]};
+        return { true, fakeFiles[key] };
     }
 
     auto IsValid(const std::string& key, const std::string& value) -> bool override
@@ -60,6 +61,16 @@ TEST_CASE("PollingTest", "[PollingTest]")
 
     auto managedCache = std::make_unique<ManagedCache<std::string, std::string>>(
             testPoll, std::reinterpret_pointer_cast<IPrunable<std::string>>(testStore));
+
+
+    std::shared_ptr<ICacheStoreStrategy<std::string, std::string>> testStore2 =
+            std::make_shared<MemoryCacheStore<std::string, std::string>>();
+    std::unique_ptr<IRetrievable<std::string, std::string>> testDataSource2 = std::make_unique<FakeDataSource>();
+    std::unique_ptr<ICacheHydrationStrategy<std::string, std::string>> testPoll2 =
+            std::make_unique<PollingCacheHydrator<std::string, std::string>>(testStore2, testDataSource2, 500ms);
+
+    auto lru = std::make_unique<LeastRecentlyUsed<std::string, std::string>>(
+            testPoll2, std::reinterpret_pointer_cast<IPrunable<std::string>>(testStore2));
 
     REQUIRE(managedCache != nullptr);
 }
