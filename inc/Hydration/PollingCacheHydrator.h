@@ -187,8 +187,6 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
                 }
 
                 TryRefresh(key);
-
-                // TODO: Allow callback for instrumentation of polling thread.
             }
 
             // Ignore spurious wake-ups. Used instead of sleep to allow for fast-kill

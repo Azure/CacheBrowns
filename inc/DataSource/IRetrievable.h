@@ -18,6 +18,8 @@ namespace Microsoft::Azure::CacheBrowns::DataSource
         /// Accepts current value if one exists in case it can be used for optimized load
         virtual bool Retrieve(const Key& key, Value& value);
 
+        // TODO: Blocked by lack of iterator support
+        //
         //        virtual std::vector<std::pair<Key, std::tuple<bool, Value>>> RetrieveMany(
         //                KeyIterator begin,
         //                KeyIterator end,

@@ -5,6 +5,7 @@
 #include "../../inc/Hydration/PullCacheHydrator.h"
 #include "../../inc/ManagedCache.h"
 #include "../../inc/Store/MemoryCacheStore.h"
+#include "../../inc/Store/DiscreteFileCacheStore.h"
 
 #include <chrono>
 #include <map>
@@ -62,4 +63,11 @@ TEST_CASE("PollingTest", "[PollingTest]")
             testPoll, std::reinterpret_pointer_cast<IPrunable<std::string>>(testStore));
 
     REQUIRE(managedCache != nullptr);
+}
+
+TEST_CASE("FileTest", "[FileTest]")
+{
+    auto test = std::make_unique<DiscreteFileCacheStore>();
+
+    REQUIRE(test != nullptr);
 }
