@@ -17,12 +17,10 @@ namespace Microsoft::Azure::CacheBrowns
     template<typename Key, typename Value>
     class ManagedCache final : public IManagedCache<Key, Value>
     {
-        typedef std::unique_ptr<ICacheReplacementStrategy<Key, Value>> CacheReplacementStrategy;
-
-        CacheReplacementStrategy cacheReplacementStrategy;
+        std::unique_ptr<ICacheReplacementStrategy<Key, Value>> cacheReplacementStrategy;
 
     public:
-        explicit ManagedCache(CacheReplacementStrategy& replacementStrategy);
+        explicit ManagedCache(std::unique_ptr<ICacheReplacementStrategy<Key, Value>>& replacementStrategy);
 
         explicit ManagedCache(
                 std::unique_ptr<ICacheHydrationStrategy<Key, Value>>& hydrator,
@@ -34,8 +32,8 @@ namespace Microsoft::Azure::CacheBrowns
     };
 
     template<typename Key, typename Value>
-    ManagedCache<Key, Value>::ManagedCache(ManagedCache::CacheReplacementStrategy& replacementStrategy) :
-        cacheReplacementStrategy(replacementStrategy)
+    ManagedCache<Key, Value>::ManagedCache(std::unique_ptr<ICacheReplacementStrategy<Key, Value>>& replacementStrategy) :
+        cacheReplacementStrategy(std::move(replacementStrategy))
     {
     }
 

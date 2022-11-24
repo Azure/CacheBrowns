@@ -11,7 +11,7 @@
 namespace Microsoft::Azure::CacheBrowns::Store
 {
     template<typename Key, typename Value>
-    class MemoryCacheStore : public ICacheStoreStrategy<Key, Value>
+    class MemoryCacheStore final : public ICacheStoreStrategy<Key, Value>
     {
         std::unordered_map<Key, Value> data;
 

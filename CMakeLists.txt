@@ -17,20 +17,14 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(Catch2)
 
-set(BOOST_ENABLE_CMAKE ON)
-
-FetchContent_Declare(
-        Boost
-        GIT_REPOSITORY https://github.com/boostorg/boost.git
-        GIT_SUBMODULES libs/uuid
-        GIT_TAG boost-1.76.0
-)
-
-#FetchContent_MakeAvailable(Boost)
-
-add_executable(CacheBrownsTests src/CacheBrownsTests/test.cpp ${cachebrowns_src} inc/Store/IHydratable.h inc/Store/IPrunable.h src/CacheBrownsTests/CrpDataSource.cpp src/CacheBrownsTests/CrpDataSource.h src/CacheBrownsTests/VdcDataSource.cpp src/CacheBrownsTests/VdcDataSource.h inc/Store/DiscreteFileCacheStore.h)
+add_executable(CacheBrownsTests src/CacheBrownsTests/test.cpp)
 target_link_libraries(CacheBrownsTests PRIVATE Catch2::Catch2)
 
-target_include_directories(CacheBrownsTests PRIVATE ${Catch2}/include ${BoostUuid}/include)
+target_include_directories(CacheBrownsTests PRIVATE ${Catch2}/include inc)
+
+add_executable(LibTests lib/PollingTaskTests.cpp)
+target_link_libraries(LibTests PRIVATE Catch2::Catch2)
+
+target_include_directories(LibTests PRIVATE ${Catch2}/include lib)
 
 set_target_properties(CacheBrownsTests PROPERTIES LINKER_LANGUAGE CXX)

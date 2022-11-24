@@ -4,18 +4,17 @@
 #define CACHEBROWNS_PURGABLECACHE_H
 
 #include "IManagedCache.h"
+#include "ManagedCache.h"
 
 namespace Microsoft::Azure::CacheBrowns
 {
     template<typename Key, typename Value>
     class PurgableCache final : public IManagedCache<Key, Value>
     {
-        typedef std::unique_ptr<ICacheReplacementStrategy<Key, Value>> CacheReplacementStrategy;
-
-        CacheReplacementStrategy cacheReplacementStrategy;
+        std::unique_ptr<ICacheReplacementStrategy<Key, Value>> cacheReplacementStrategy;
 
     public:
-        explicit PurgableCache(CacheReplacementStrategy& replacementStrategy);
+        explicit PurgableCache(std::unique_ptr<ICacheReplacementStrategy<Key, Value>>& replacementStrategy);
 
         explicit PurgableCache(std::unique_ptr<ICacheHydrationStrategy<Key, Value>>& hydrator);
 
@@ -36,8 +35,8 @@ namespace Microsoft::Azure::CacheBrowns
     };
 
     template<typename Key, typename Value>
-    PurgableCache<Key, Value>::PurgableCache(ManagedCache::CacheReplacementStrategy& replacementStrategy) :
-        cacheReplacementStrategy(replacementStrategy)
+    PurgableCache<Key, Value>::PurgableCache(std::unique_ptr<ICacheReplacementStrategy<Key, Value>>& replacementStrategy) :
+        cacheReplacementStrategy(std::move(replacementStrategy))
     {
     }
 

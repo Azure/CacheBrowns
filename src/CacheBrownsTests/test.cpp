@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 
-#include "../../inc/DataSource/ICacheDataSource.h"
-#include "../../inc/Hydration/PollingCacheHydrator.h"
-#include "../../inc/Hydration/PullCacheHydrator.h"
-#include "../../inc/ManagedCache.h"
-#include "../../inc/Store/MemoryCacheStore.h"
-#include "../../inc/Store/DiscreteFileCacheStore.h"
+#include "DataSource/ICacheDataSource.h"
+#include "Hydration/PollingCacheHydrator.h"
+#include "Hydration/PullCacheHydrator.h"
+#include "ManagedCache.h"
+#include "Store/DiscreteFileCacheStore_Volatile.h"
+#include "Store/MemoryCacheStore.h"
 
 #include <chrono>
 #include <map>
@@ -67,7 +67,7 @@ TEST_CASE("PollingTest", "[PollingTest]")
 
 TEST_CASE("FileTest", "[FileTest]")
 {
-    auto test = std::make_unique<DiscreteFileCacheStore>();
+    auto test = std::make_unique<DiscreteFileCacheStore_Volatile>("./testdir");
 
     REQUIRE(test != nullptr);
 }

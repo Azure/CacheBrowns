@@ -9,6 +9,7 @@ namespace Microsoft::Azure::CacheBrowns::Replacement
 {
     using namespace Hydration;
 
+    /// When a cache is permitted to grow without bound, there is no need for a replacement strategy.
     template<typename Key, typename Value>
     class NoReplacement : public ICacheReplacementStrategy<Key, Value>
     {
