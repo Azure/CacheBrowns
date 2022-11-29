@@ -170,7 +170,6 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
     void PollingCacheHydrator<Key, Value, whenInvalid>::Poll()
     {
         std::mutex mutex;
-        std::unique_lock<std::mutex> lock(mutex);
 
         // This is an example of bulk polling. You could have implementations that maintain freshness on a per entry
         // basis or bucket basis if desired. Because the locks are only held for the final writes, you could also
@@ -178,6 +177,7 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
         while (activelyPolling)
         {
             auto keysCopy = GetCopyOfKeys();
+            std::unique_lock<std::mutex> lock(mutex);
 
             for (const auto& key : keysCopy)
             {
@@ -206,7 +206,7 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
         if (found)
         {
             auto previousValue = std::get<1>(cacheDataStore->Get(key));
-            auto wasRetrieved = cacheDataRetriever->Retrieve(key, previousValue);
+            auto [wasRetrieved, newValue] = cacheDataRetriever->Retrieve(key, previousValue);
 
             readLock.unlock();
 

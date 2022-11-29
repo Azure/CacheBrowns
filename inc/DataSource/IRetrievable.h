@@ -16,7 +16,7 @@ namespace Microsoft::Azure::CacheBrowns::DataSource
         virtual std::tuple<bool, Value> Retrieve(const Key& key) = 0;
 
         /// Accepts current value if one exists in case it can be used for optimized load
-        virtual bool Retrieve(const Key& key, Value& value);
+        virtual std::tuple<bool, Value> Retrieve(const Key& key, const Value& value);
 
         // TODO: Blocked by lack of iterator support
         //
@@ -29,13 +29,11 @@ namespace Microsoft::Azure::CacheBrowns::DataSource
         //        std::vector<std::pair<Key, std::tuple<bool, Value>>> RetrieveMany(const Container& container);
     };
 
+    /// The default case is no special optimization, so provide dummy implementation
     template<typename Key, typename Value>
-    bool IRetrievable<Key, Value>::Retrieve(const Key& key, Value& value)
+    std::tuple<bool, Value> IRetrievable<Key, Value>::Retrieve(const Key& key, const Value&)
     {
-        bool found;
-        std::tie(found, value) = Retrieve(key);
-
-        return found;
+        return Retrieve(key);
     }
 
 }// namespace Microsoft::Azure::CacheBrowns::DataSource

@@ -3,7 +3,6 @@
 #include <atomic>
 #include "PollingTask.h"
 
-#define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
 using namespace Microsoft::Azure::Host::Common;

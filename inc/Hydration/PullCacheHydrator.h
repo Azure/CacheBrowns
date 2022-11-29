@@ -45,7 +45,7 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
     private:
         std::tuple<bool, Value> TryHydrate(const Key& key);
 
-        std::tuple<bool, Value> TryHydrate(const Key& key, Value currentValue);
+        std::tuple<bool, Value> TryHydrate(const Key& key, const Value& currentValue);
 
         std::tuple<bool, Value> PullCacheHydrator<Key, Value, whenInvalid>::HandleRetrieveResult(
                 const Key& key,
@@ -101,11 +101,11 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    std::tuple<bool, Value> PullCacheHydrator<Key, Value, whenInvalid>::TryHydrate(const Key& key, Value currentValue)
+    std::tuple<bool, Value> PullCacheHydrator<Key, Value, whenInvalid>::TryHydrate(const Key& key, const Value& currentValue)
     {
-        bool wasRetrieved = cacheDataRetriever->Retrieve(key, currentValue);
+        auto [wasRetrieved, value] = cacheDataRetriever->Retrieve(key, currentValue);
 
-        return HandleRetrieveResult(key, wasRetrieved, currentValue);
+        return HandleRetrieveResult(key, wasRetrieved, value);
     }
 
 
