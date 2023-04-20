@@ -3,16 +3,17 @@
 #ifndef CACHEBROWNS_POLLINGCACHEHYDRATOR_H
 #define CACHEBROWNS_POLLINGCACHEHYDRATOR_H
 
-#include "../DataSource/ICacheDataSource.h"
-#include "../Store/ICacheStoreStrategy.h"
-#include "../Store/IHydratable.h"
+#include "DataSource/ICacheDataSource.h"
+#include "Store/ICacheStoreStrategy.h"
+#include "Store/IHydratable.h"
 #include "ICacheHydrationStrategy.h"
+#include "Lib/PollingTask.h"
+#include "Store/StoreDataKeyTracker.h"
 
 #include <chrono>
 #include <memory>
 #include <mutex>
 #include <set>
-#include <shared_mutex>
 
 namespace Microsoft::Azure::CacheBrowns::Hydration
 {
@@ -25,24 +26,15 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
             InvalidCacheEntryBehavior whenInvalid = InvalidCacheEntryBehavior::ReturnNotValid>
     class PollingCacheHydrator final : public ICacheHydrationStrategy<Key, Value, whenInvalid>
     {
-        using CacheStorePtr = std::shared_ptr<IHydratable<Key, Value>>;
+        using CacheStorePtr = std::shared_ptr<StoreDataKeyTracker<Key, Value>>;
         using CacheDataRetrieverPtr = std::unique_ptr<IRetrievable<Key, Value>>;
 
         CacheStorePtr cacheDataStore;
-        mutable std::shared_mutex dataSourceMutex;
         CacheDataRetrieverPtr cacheDataRetriever;
 
-        // Used to fast-kill the polling thread
-        std::condition_variable cv;
-        bool activelyPolling = true;
+        Microsoft::Azure::Host::Common::PollingTask<std::chrono::milliseconds> pollingTask;
 
-        std::thread pollingThread;
-        std::set<Key> invalidEntries;
-        std::chrono::milliseconds pollRate;
         std::function<void(CacheLookupResult)> pollResultInstrumentationCallback;
-
-        // TODO: Using iterators this isn't necessary to track, but implementing the generically isn't necessary for PoC
-        std::set<Key> keys;
 
     public:
         PollingCacheHydrator(
@@ -53,24 +45,34 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
 
         auto Get(const Key& key) -> std::tuple<CacheLookupResult, Value> override;
 
-        void HandleInvalidate(const Key& key) override;
+        void SetPollingRate(std::chrono::milliseconds pollRate);
 
-        void HandleDelete(const Key& key) override;
+        void Invalidate(const Key& key) override;
 
-        void HandleFlush() override;
-
-        /// Polling thread will block object destruct, sends kill and sleep interrupt signals.
         /// NOTE: This will not immediately result in thread destruct if a poll operation is currently in progress.
         /// Consider the upper bound of the injected retrieve operation to be the approximate upper bound for this
         /// operation.
-        ~PollingCacheHydrator();
+        ~PollingCacheHydrator() = default;
 
     private:
         auto TryHydrate(const Key& key) -> std::tuple<bool, Value>;
         void Hydrate(const Key& key, Value& retrievedValue);
-        void Poll();
-        std::set<Key> GetCopyOfKeys() const;
         void TryRefresh(const Key& key);
+
+        const std::function<void(const std::atomic<bool>&)> Poll = [this](const std::atomic<bool>& activelyPolling)
+        {
+            auto keysCopy = cacheDataStore->GetKeys();
+
+            for (const auto& key : keysCopy)
+            {
+                if (!activelyPolling)
+                {
+                    break;
+                }
+
+                TryRefresh(key);
+            }
+        };
     };
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
@@ -81,13 +83,13 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
 
         // Don't hold lock longer than necessary
         {
-            std::shared_lock readLock(dataSourceMutex);
+            std::shared_lock readLock(dataStoreMutex);
 
             std::tie(found, datum) = cacheDataStore->Get(key);
 
             if (found)
             {
-                valid = invalidEntries.find(key) != invalidEntries.end();
+                valid = cacheDataStore->IsMarkedInvalid(key);
             }
             // Value isn't registered for polling, fetch (which implicitly registers)
             else
@@ -108,7 +110,7 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
 
         if (wasRetrieved)
         {
-            std::unique_lock writeLock(dataSourceMutex);
+            std::unique_lock writeLock(dataStoreMutex);
             Hydrate(key, retrievedValue);
         }
 
@@ -120,30 +122,13 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
     {
         keys.insert(key);
         cacheDataStore->Set(key, retrievedValue);
-        invalidEntries.erase(key);
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    void PollingCacheHydrator<Key, Value, whenInvalid>::HandleInvalidate(const Key& key)
+    void PollingCacheHydrator<Key, Value, whenInvalid>::Invalidate(const Key& key)
     {
-        std::unique_lock writeLock(dataSourceMutex);
-        invalidEntries.insert(key);
-    }
-
-    template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    void PollingCacheHydrator<Key, Value, whenInvalid>::HandleDelete(const Key& key)
-    {
-        std::unique_lock writeLock(dataSourceMutex);
-        keys.erase(key);
-        invalidEntries.erase(key);
-    }
-
-    template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    void PollingCacheHydrator<Key, Value, whenInvalid>::HandleFlush()
-    {
-        std::unique_lock writeLock(dataSourceMutex);
-        keys.clear();
-        invalidEntries.clear();
+        std::unique_lock writeLock(dataStoreMutex);
+        cacheDataStore->MarkInvalid();
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
@@ -153,52 +138,17 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
             std::chrono::milliseconds pollEvery,
             std::function<void(CacheLookupResult)> pollResultInstrumentation) :
         cacheDataStore(std::move(dataStore)),
-        cacheDataRetriever(std::move(dataRetriever)), pollRate(pollEvery),
-        pollResultInstrumentationCallback(std::move(pollResultInstrumentation))
+        cacheDataRetriever(std::move(dataRetriever)),
+        pollResultInstrumentationCallback(std::move(pollResultInstrumentation)),
+        pollingTask(pollEvery, Poll)
     {
-        pollingThread = std::thread(&PollingCacheHydrator::Poll, this);
-    }
-
-    template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    PollingCacheHydrator<Key, Value, whenInvalid>::~PollingCacheHydrator()
-    {
-        activelyPolling = false;
-        cv.notify_all();
-    }
-
-    template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    void PollingCacheHydrator<Key, Value, whenInvalid>::Poll()
-    {
-        std::mutex mutex;
-
-        // This is an example of bulk polling. You could have implementations that maintain freshness on a per entry
-        // basis or bucket basis if desired. Because the locks are only held for the final writes, you could also
-        // upgrade this or any other implementation to accept async data sources.
-        while (activelyPolling)
-        {
-            auto keysCopy = GetCopyOfKeys();
-            std::unique_lock<std::mutex> lock(mutex);
-
-            for (const auto& key : keysCopy)
-            {
-                if (!activelyPolling)
-                {
-                    break;
-                }
-
-                TryRefresh(key);
-            }
-
-            // Ignore spurious wake-ups. Used instead of sleep to allow for fast-kill
-            cv.wait_for(lock, pollRate, [&] { return !activelyPolling; });
-        }
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
     void PollingCacheHydrator<Key, Value, whenInvalid>::TryRefresh(const Key& key)
     {
         bool wasHydrated = false, valid = false;
-        std::shared_lock readLock(dataSourceMutex);
+        std::shared_lock readLock(dataStoreMutex);
 
         bool found = keys.find(key) != keys.end();
 
@@ -210,7 +160,7 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
 
             readLock.unlock();
 
-            std::unique_lock writeLock(dataSourceMutex);
+            std::unique_lock writeLock(dataStoreMutex);
 
             // Value could have been deleted during retrieval, verify update should still occur
             valid = keys.find(key) != keys.end();
@@ -223,7 +173,7 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
             else
             {
                 // Value in cache, but polling operation failed meaning the value is now stale
-                invalidEntries.insert(key);
+                cacheDataStore->MarkInvalid(key);
             }
         }
 
@@ -232,10 +182,9 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    std::set<Key> PollingCacheHydrator<Key, Value, whenInvalid>::GetCopyOfKeys() const
+    void PollingCacheHydrator<Key, Value, whenInvalid>::SetPollingRate(std::chrono::milliseconds pollRate)
     {
-        std::shared_lock readLock(dataSourceMutex);
-        return keys;
+        pollingTask.SetPollingRate(pollRate);
     }
 
 }// namespace Microsoft::Azure::CacheBrowns::Hydration

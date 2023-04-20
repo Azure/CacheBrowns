@@ -36,10 +36,24 @@ namespace Microsoft::Azure::Host::Common
         /// </summary>
         /// <param name="pollingRate">The duration between each poll attempt.</param>
         /// <param name="task">The task to be executed.</param>
-        PollingTask(_In_ Duration pollingRate, _In_ std::function<void()> task) :
-            activelyPolling(true), task(std::move(task)), pollingRate(pollingRate), pollingThread(&PollingTask::Poll, this)
+        PollingTask(_In_ Duration pollingRate, _In_ std::function<void()> innerTask) :
+            activelyPolling(true), pollingRate(pollingRate), pollingThread(&PollingTask::Poll, this)
         {
+            // Discard the bool
+            task = [innerTask, &activelyPolling = activelyPolling](const std::atomic<bool>&)
+            {
+                innerTask();
+            };
         }
+
+        /// <summary>
+        /// Constructs the polling task and starts work execution.
+        /// </summary>
+        /// <param name="pollingRate">The duration between each poll attempt.</param>
+        /// <param name="task">The task to be executed.</param>
+        PollingTask(_In_ Duration pollingRate, _In_ std::function<void(const std::atomic<bool>&)> interuptableTask) :
+            activelyPolling(true), task(std::move(interuptableTask)), pollingRate(pollingRate), pollingThread(&PollingTask::Poll, this)
+        {}
 
         ~PollingTask()
         {
@@ -57,7 +71,7 @@ namespace Microsoft::Azure::Host::Common
     private:
         std::condition_variable pollingThreadKillSignal;
         std::atomic<bool> activelyPolling;
-        std::function<void()> task;
+        std::function<void(const std::atomic_bool&)> task;
 
         std::atomic<Duration> pollingRate;
         std::thread pollingThread;
@@ -75,7 +89,7 @@ namespace Microsoft::Azure::Host::Common
 
                 if (!stopPolling)
                 {
-                    task();
+                    task(activelyPolling);
                 }
             }
         }
@@ -111,10 +125,21 @@ namespace Microsoft::Azure::Host::Common
                     pollingRate, [this, task, setPollingRateWrapper]() { task(setPollingRateWrapper); });
         }
 
+        SelfUpdatingPollingTask(_In_ Duration pollingRate, _In_ const std::function<void(const PollingRateSetter&, const std::atomic<bool>&)>& task)
+        {
+            PollingRateSetter setPollingRateWrapper = [this](Duration duration) { Task->SetPollingRate(duration); };
+
+            Task = std::make_unique<PollingTask<Duration>>(
+                    pollingRate, [this, task, setPollingRateWrapper](const std::atomic<bool>& activelyPolling)
+                    {
+                        task(setPollingRateWrapper, activelyPolling);
+                    });
+        }
+
     private:
         std::unique_ptr<PollingTask<Duration>> Task;
     };
 
-}// namespace Microsoft::Azure::CacheBrowns::Store
+}// namespace Microsoft::Azure::Host::Common
 
 #endif//CACHEBROWNS_POLLINGTASK_VOLATILE_H

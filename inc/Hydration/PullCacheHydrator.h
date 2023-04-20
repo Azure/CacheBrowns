@@ -3,8 +3,9 @@
 #ifndef CACHEBROWNS_PULLCACHEHYDRATOR_H
 #define CACHEBROWNS_PULLCACHEHYDRATOR_H
 
-#include "../DataSource/ICacheDataSource.h"
-#include "../Store/ICacheStoreStrategy.h"
+#include "DataSource/ICacheDataSource.h"
+#include "Store/ICacheStoreStrategy.h"
+#include "Store/StoreDataValidOverider.h"
 #include "ICacheHydrationStrategy.h"
 
 #include <memory>
@@ -21,26 +22,19 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
             InvalidCacheEntryBehavior whenInvalid = InvalidCacheEntryBehavior::ReturnNotValid>
     class PullCacheHydrator final : public ICacheHydrationStrategy<Key, Value, whenInvalid>
     {
-        typedef std::shared_ptr<IHydratable<Key, Value>> cacheStorePtr;
+        typedef std::shared_ptr<StoreDataValidOverider<Key, Value>> OverideStorePtr;
         typedef std::unique_ptr<Microsoft::Azure::CacheBrowns::DataSource::ICacheDataSource<Key, Value>>
-                cacheDataSourcePtr;
+                CacheDataSourcePtr;
 
-        cacheStorePtr cacheDataStore;
-        cacheDataSourcePtr cacheDataRetriever;
-
-        /// Marks entries as invalid, overriding whatever would be returned by ICacheDataSource::IsValid
-        std::set<Key> invalidEntryOverrides;
+        OverideStorePtr cacheDataStore;
+        CacheDataSourcePtr cacheDataRetriever;
 
     public:
-        PullCacheHydrator(cacheStorePtr dataStore, cacheDataSourcePtr& dataSource);
+        PullCacheHydrator(OverideStorePtr dataStore, CacheDataSourcePtr& dataSource);
 
         std::tuple<CacheLookupResult, Value> Get(const Key& key) override;
 
-        void HandleInvalidate(const Key& key) override;
-
-        void HandleDelete(const Key& key) override;
-
-        void HandleFlush() override;
+        void Invalidate(const Key& key) override;
 
     private:
         std::tuple<bool, Value> TryHydrate(const Key& key);
@@ -64,7 +58,7 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
         {
             valid = cacheDataRetriever->IsValid(key, datum);
 
-            if (!valid || invalidEntryOverrides.find(key) != invalidEntryOverrides.end())
+            if (!valid || cacheDataStore->IsMarkedInvalid(key))
             {
                 std::tie(wasHydrated, datum) = TryHydrate(key, datum);
             }
@@ -110,27 +104,15 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
 
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    void PullCacheHydrator<Key, Value, whenInvalid>::HandleInvalidate(const Key& key)
+    void PullCacheHydrator<Key, Value, whenInvalid>::Invalidate(const Key& key)
     {
-        invalidEntryOverrides.insert(key);
-    }
-
-    template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    void PullCacheHydrator<Key, Value, whenInvalid>::HandleDelete(const Key& key)
-    {
-        invalidEntryOverrides.erase(key);
-    }
-
-    template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
-    void PullCacheHydrator<Key, Value, whenInvalid>::HandleFlush()
-    {
-        invalidEntryOverrides.clear();
+        cacheDataStore->MarkInvalid(key);
     }
 
     template<typename Key, typename Value, InvalidCacheEntryBehavior whenInvalid>
     PullCacheHydrator<Key, Value, whenInvalid>::PullCacheHydrator(
-            PullCacheHydrator::cacheStorePtr dataStore,
-            PullCacheHydrator::cacheDataSourcePtr& dataSource) :
+            PullCacheHydrator::OverideStorePtr dataStore,
+            PullCacheHydrator::CacheDataSourcePtr& dataSource) :
         cacheDataStore(std::move(dataStore)),
         cacheDataRetriever(std::move(dataSource))
     {

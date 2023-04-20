@@ -14,6 +14,8 @@ namespace Microsoft::Azure::CacheBrowns
         virtual std::tuple<CacheLookupResult, Value> Get(const Key& key) = 0;
 
         virtual void Flush() = 0;
+
+        virtual ~IManagedCache() = default;
     };
 }// namespace Microsoft::Azure::CacheBrowns
 

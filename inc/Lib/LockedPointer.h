@@ -78,6 +78,9 @@ namespace Microsoft::Azure::Host::Synchronization
             return SharedLockedPtr<T>(Pointer, Mutex);
         }
     };
+
+    template<typename T>
+    using SharedLockablePtr = std::shared_ptr<LockablePtr<T>>;
 }
 
 #endif//CACHEBROWNS_LOCKEDPOINTER_H

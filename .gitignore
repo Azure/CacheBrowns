@@ -63,3 +63,5 @@ fabric.properties
 
 # Ignore other repos
 /libs
+
+.vscode/

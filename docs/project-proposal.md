@@ -47,7 +47,8 @@ with the litany of common unforced errors:
       that small improvement worth the immense degree of additional complexity and increased work to mitigate live site
       worth it? Almost certainly not.
     - Aggressive freshness targets. Is it going to harm the system if data returned is marginally out date? Eventual
-      consistency is a powerful tool for simplifying design.
+      consistency is a powerful tool for simplifying design. Allowing sub millisecond staleness can enable lock free
+      code.
 - Failure to encapsulate
     - If consuming code can operate on the store directly or is aware of how/where the data is stored, you have a
       serious design smell on your hands.
@@ -68,11 +69,11 @@ This is all further compounded when parallelism is introduced.
 
 ## Corrective principles
 
-To address this, we should strive to provide a generic read-through cache that full encapsulates not just the underlying
+To address this, we should strive to provide a generic read-through cache that fully encapsulates not just the underlying
 store, but also the writes, evictions, and staleness checks that all lead to cache invalidation. As we will see later on
 in the examples, typical implementations don't actually require writes from the perspective of the application code. The
-fact that the commonly do is merely an unnecessary application of the cache-aside pattern. If your application isn't
-generating data bidirectionally with the SoR, then there's no need to support rights. Even in the case where writes or
+fact that they commonly do is merely an unnecessary application of the cache-aside pattern. If your application isn't
+generating data bidirectionally with the SoR, then there's no need to support writes. Even in the case where writes or
 event driven invalidations are needed this does not need to be handled by the reading application logic, it can be
 injected into the managed cache (read: an instance of one-way-data-flow paradigm). A managed cache can satisfy these use
 cases so long as it provides the following functionality.

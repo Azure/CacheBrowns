@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 
-#include <LockedPointer.h>
-#include <map>
+#include "LockedPointer.h"
 
 #include <catch2/catch.hpp>
+#include <map>
 
 using namespace Microsoft::Azure::Host::Synchronization;
 

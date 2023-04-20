@@ -22,9 +22,9 @@ target_link_libraries(CacheBrownsTests PRIVATE Catch2::Catch2)
 
 target_include_directories(CacheBrownsTests PRIVATE ${Catch2}/include inc)
 
-add_executable(LibTests lib/testmain.cpp lib/PollingTaskTests.cpp lib/LockedPointerTests.cpp)
+add_executable(LibTests src/LibTests/TestMain.cpp src/LibTests/PollingTaskTests.cpp src/LibTests/LockedPointerTests.cpp)
 target_link_libraries(LibTests PRIVATE Catch2::Catch2)
 
-target_include_directories(LibTests PRIVATE ${Catch2}/include lib)
+target_include_directories(LibTests PRIVATE ${Catch2}/include inc/Lib)
 
 set_target_properties(CacheBrownsTests PROPERTIES LINKER_LANGUAGE CXX)

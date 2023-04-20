@@ -124,11 +124,9 @@ namespace Microsoft::Azure::CacheBrowns::Hydration
     public:
         virtual std::tuple<CacheLookupResult, Value> Get(const Key& key) = 0;
 
-        virtual void HandleInvalidate(const Key& key) = 0;
+        virtual void Invalidate(const Key& key) = 0;
 
-        virtual void HandleDelete(const Key& key) = 0;
-
-        virtual void HandleFlush() = 0;
+        virtual ~ICacheHydrationStrategy() = default;
     };
 }// namespace Microsoft::Azure::CacheBrowns::Hydration
 

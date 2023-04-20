@@ -7,7 +7,6 @@
 
 #include "IManagedCache.h"
 #include "Replacement/ICacheReplacementStrategy.h"
-#include "Replacement/NoReplacement.h"
 
 namespace Microsoft::Azure::CacheBrowns
 {

@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 
-#include <atomic>
 #include "PollingTask.h"
 
+#include <atomic>
 #include <catch2/catch.hpp>
 
 using namespace Microsoft::Azure::Host::Common;
