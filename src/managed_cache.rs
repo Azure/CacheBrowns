@@ -1,6 +1,5 @@
 use crate::hydration::{CacheHydrationStrategy, CacheLookupSuccess};
 use crate::managed_cache::CacheLookupFailure::NotFound;
-use crate::managed_cache::InvalidCacheEntryBehavior::{ReturnNotValid, ReturnStale};
 
 enum CacheLookupFailure {
     NotFound,
@@ -25,7 +24,7 @@ impl<Key, Value> ManagedCache<Key, Value> {
             None => Err(NotFound),
             Some(lookup_result) => {
                 if let CacheLookupSuccess::Stale(value) = &lookup_result {
-                    if let ReturnStale = self.when_invalid {
+                    if let ReturnStale = &self.when_invalid {
                         return Ok(lookup_result);
                     }
 
