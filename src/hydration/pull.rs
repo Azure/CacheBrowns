@@ -72,4 +72,8 @@ impl<Key, Value: Clone> CacheHydrationStrategy<Key, Value> for PullCacheHydrator
     fn flush(&mut self) {
         self.store.flush();
     }
+
+    fn stop_tracking(&mut self, key: &Key) {
+        self.store.delete(key);
+    }
 }

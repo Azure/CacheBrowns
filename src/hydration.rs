@@ -12,6 +12,8 @@ pub trait CacheHydrationStrategy<Key, Value> {
     fn get(&mut self, key: &Key) -> Option<CacheLookupSuccess<Value>>;
 
     fn flush(&mut self);
+
+    fn stop_tracking(&mut self, key: &Key);
 }
 
 impl<Value> CacheLookupSuccess<Value> {

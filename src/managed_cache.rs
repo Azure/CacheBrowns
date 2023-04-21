@@ -40,4 +40,12 @@ impl<Key, Value> ManagedCache<Key, Value> {
     pub fn flush(&mut self) {
         self.hydrator.flush();
     }
+
+    /// Indicates that a given key is no longer relevant and can be purged. For example, a client
+    /// session ends or a VM is deallocated.
+    ///
+    /// IF YOU ARE USING THIS TO TRY TO LOOPHOLE A CACHE INVALIDATION, YOU ARE GOING TO BREAK THINGS
+    pub fn stop_tracking(&mut self, key: &Key) {
+        self.hydrator.stop_tracking(key);
+    }
 }
