@@ -19,12 +19,12 @@ impl<Key, Value: Clone> PullCacheHydrator<Key, Value> {
         value
     }
 
-    fn try_hydrate_with_hint(&mut self, key: &Key, old_value: Value) -> (bool, Value) {
+    fn try_hydrate_with_hint(&mut self, key: &Key, old_value: &Value) -> (bool, Value) {
         let value = self.data_source.retrieve_with_hint(key, &old_value);
         self.handle_retrieve_result(key, &value);
 
         return match value {
-            None => (false, old_value),
+            None => (false, old_value.clone()),
             Some(value) => (true, value)
         }
     }
@@ -39,14 +39,19 @@ impl<Key, Value: Clone> PullCacheHydrator<Key, Value> {
 
 impl<Key, Value: Clone> CacheHydrationStrategy<Key, Value> for PullCacheHydrator<Key, Value> {
     fn get(&mut self, key: &Key) -> Option<CacheLookupSuccess<Value>> {
-        let mut valid = false;
-        let mut was_hydrated;
-        let mut datum: Option<Value> = None;
+        let mut valid= false;
+        let mut was_hydrated = false;
+        let mut datum: Option<Value> = self.store.get(key);
+        let found = datum.is_some();
 
-        match self.store.get(key) {
+        match &datum {
             None => {
                 datum = self.try_hydrate(key);
                 was_hydrated = datum.is_some();
+
+                if !was_hydrated {
+                    return None
+                }
             }
             Some(value) => {
                 valid = self.data_source.is_valid(key, &value);
@@ -60,9 +65,8 @@ impl<Key, Value: Clone> CacheHydrationStrategy<Key, Value> for PullCacheHydrator
             }
         }
 
-        let found = datum.is_some();
-
-        todo!()
+        // Note, datum is guarunteed not to be None here
+        Some(CacheLookupSuccess::new(found, valid, was_hydrated, datum.unwrap()))
     }
 
     fn flush(&mut self) {
