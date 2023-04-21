@@ -65,7 +65,7 @@ impl<Key, Value: Clone> CacheHydrationStrategy<Key, Value> for PullCacheHydrator
             }
         }
 
-        // Note, datum is guarunteed not to be None here
+        // Note, datum is guaranteed not to be None here
         Some(CacheLookupSuccess::new(found, valid, was_hydrated, datum.unwrap()))
     }
 
