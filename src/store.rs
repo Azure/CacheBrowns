@@ -62,3 +62,15 @@ impl<Key: Eq + Clone + std::hash::Hash, Value> KeyTrackingStore<Key, Value> for 
         self.keys.contains(key)
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn happy_path_serialize_deserialize() {
+
+        assert_eq!(2, 2);
+    }
+}
