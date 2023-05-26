@@ -1,4 +1,4 @@
-use crate::data_source::SourceOfRecord;
+use crate::source_of_record::SourceOfRecord;
 use crate::hydration::{CacheHydrationStrategy, CacheLookupSuccess};
 use crate::store::CacheStoreStrategy;
 

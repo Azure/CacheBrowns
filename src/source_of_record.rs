@@ -12,15 +12,15 @@ pub trait SourceOfRecord<Key, Value> {
 }
 
 /// Operates http client with cache control headers respected
-pub struct HttpDataSource {
+pub struct HttpDataSourceOfRecord {
 
 }
 
-impl HttpDataSource {
+impl HttpDataSourceOfRecord {
 
 }
 
-impl<Key, Value> SourceOfRecord<Key, Value> for HttpDataSource {
+impl<Key, Value> SourceOfRecord<Key, Value> for HttpDataSourceOfRecord {
     fn retrieve(&self, key: &Key) -> Option<Value> {
         todo!()
     }

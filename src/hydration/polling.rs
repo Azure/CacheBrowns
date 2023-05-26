@@ -1,4 +1,4 @@
-use crate::data_source::SourceOfRecord;
+use crate::source_of_record::SourceOfRecord;
 use crate::store::KeyTrackingStore;
 
 struct PollingCacheHydrator<Key, Value> {
