@@ -3,19 +3,19 @@ use crate::managed_cache::CacheLookupFailure::NotFound;
 
 enum CacheLookupFailure {
     NotFound,
-    NotValid
+    NotValid,
 }
 
 enum InvalidCacheEntryBehavior {
     /// No valid value could be fetched
     ReturnNotValid,
     /// Value isn't in a Valid state, but was returned anyway as a best effort
-    ReturnStale
+    ReturnStale,
 }
 
 struct ManagedCache<Key, Value> {
     hydrator: Box<dyn CacheHydrationStrategy<Key, Value>>,
-    when_invalid: InvalidCacheEntryBehavior
+    when_invalid: InvalidCacheEntryBehavior,
 }
 
 impl<Key, Value> ManagedCache<Key, Value> {
@@ -29,8 +29,7 @@ impl<Key, Value> ManagedCache<Key, Value> {
                     }
 
                     Err(CacheLookupFailure::NotValid)
-                }
-                else {
+                } else {
                     Ok(lookup_result)
                 }
             }

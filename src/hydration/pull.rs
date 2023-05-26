@@ -1,14 +1,17 @@
-use crate::source_of_record::SourceOfRecord;
 use crate::hydration::{CacheHydrationStrategy, CacheLookupSuccess};
+use crate::source_of_record::SourceOfRecord;
 use crate::store::CacheStoreStrategy;
 
 struct PullCacheHydrator<Key, Value> {
     store: Box<dyn CacheStoreStrategy<Key, Value>>,
-    data_source: Box<dyn SourceOfRecord<Key, Value>>
+    data_source: Box<dyn SourceOfRecord<Key, Value>>,
 }
 
 impl<Key, Value: Clone> PullCacheHydrator<Key, Value> {
-    pub fn new(store: Box<dyn CacheStoreStrategy<Key, Value>>, data_source: Box<dyn SourceOfRecord<Key, Value>>) -> Self {
+    pub fn new(
+        store: Box<dyn CacheStoreStrategy<Key, Value>>,
+        data_source: Box<dyn SourceOfRecord<Key, Value>>,
+    ) -> Self {
         PullCacheHydrator { store, data_source }
     }
 
@@ -25,8 +28,8 @@ impl<Key, Value: Clone> PullCacheHydrator<Key, Value> {
 
         return match value {
             None => (false, old_value.clone()),
-            Some(value) => (true, value)
-        }
+            Some(value) => (true, value),
+        };
     }
 
     fn handle_retrieve_result(&mut self, key: &Key, value: &Option<Value>) {
@@ -39,7 +42,7 @@ impl<Key, Value: Clone> PullCacheHydrator<Key, Value> {
 
 impl<Key, Value: Clone> CacheHydrationStrategy<Key, Value> for PullCacheHydrator<Key, Value> {
     fn get(&mut self, key: &Key) -> Option<CacheLookupSuccess<Value>> {
-        let mut valid= false;
+        let mut valid = false;
         let mut was_hydrated = false;
         let mut datum: Option<Value> = self.store.get(key);
         let found = datum.is_some();
@@ -50,7 +53,7 @@ impl<Key, Value: Clone> CacheHydrationStrategy<Key, Value> for PullCacheHydrator
                 was_hydrated = datum.is_some();
 
                 if !was_hydrated {
-                    return None
+                    return None;
                 }
             }
             Some(value) => {
@@ -66,7 +69,12 @@ impl<Key, Value: Clone> CacheHydrationStrategy<Key, Value> for PullCacheHydrator
         }
 
         // Note, datum is guaranteed not to be None here
-        Some(CacheLookupSuccess::new(found, valid, was_hydrated, datum.unwrap()))
+        Some(CacheLookupSuccess::new(
+            found,
+            valid,
+            was_hydrated,
+            datum.unwrap(),
+        ))
     }
 
     fn flush(&mut self) {

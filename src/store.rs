@@ -21,18 +21,27 @@ pub trait KeyTrackingStore<Key, Value>: CacheStoreStrategy<Key, Value> {
     fn contains(&self, key: &Key) -> bool;
 }
 
+/// This object assumes that the underlying store is volatile, as the keys tracked here will not
+/// match the underlying store. This is fine because a non-volatile store must inherently be capable
+/// of rehydrating persisted state, which means it already is tracking keys and should satisfy the
+/// [`KeyTrackingStore`] trait directly rather than by wrapping with this general case helper.
 pub struct KeyTrackedStore<Key, Value> {
     store: Box<dyn CacheStoreStrategy<Key, Value>>,
-    keys: HashSet<Key>
+    keys: HashSet<Key>,
 }
 
 impl<Key, Value> KeyTrackedStore<Key, Value> {
     pub fn new(store: Box<dyn CacheStoreStrategy<Key, Value>>) -> Self {
-        Self { store, keys: Default::default() }
+        Self {
+            store,
+            keys: Default::default(),
+        }
     }
 }
 
-impl<Key: Eq + Clone + std::hash::Hash, Value> CacheStoreStrategy<Key, Value> for KeyTrackedStore<Key, Value> {
+impl<Key: Eq + Clone + std::hash::Hash, Value> CacheStoreStrategy<Key, Value>
+    for KeyTrackedStore<Key, Value>
+{
     fn get(&self, key: &Key) -> Option<Value> {
         self.store.get(key)
     }
@@ -53,7 +62,9 @@ impl<Key: Eq + Clone + std::hash::Hash, Value> CacheStoreStrategy<Key, Value> fo
     }
 }
 
-impl<Key: Eq + Clone + std::hash::Hash, Value> KeyTrackingStore<Key, Value> for KeyTrackedStore<Key, Value> {
+impl<Key: Eq + Clone + std::hash::Hash, Value> KeyTrackingStore<Key, Value>
+    for KeyTrackedStore<Key, Value>
+{
     fn get_keys(&self) -> HashSet<Key> {
         self.keys.clone()
     }
@@ -63,14 +74,12 @@ impl<Key: Eq + Clone + std::hash::Hash, Value> KeyTrackingStore<Key, Value> for 
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn happy_path_serialize_deserialize() {
-
         assert_eq!(2, 2);
     }
 }

@@ -1,5 +1,5 @@
-pub mod pull;
 pub mod polling;
+pub mod pull;
 
 pub enum CacheLookupSuccess<Value> {
     Miss(Value),
@@ -18,20 +18,13 @@ pub trait CacheHydrationStrategy<Key, Value> {
 
 impl<Value> CacheLookupSuccess<Value> {
     pub fn new(store_hit: bool, valid_entry: bool, hydrated: bool, value: Value) -> Self {
-        if store_hit
-        {
-            if valid_entry
-            {
+        if store_hit {
+            if valid_entry {
                 return CacheLookupSuccess::Hit(value);
-            }
-            else
-            {
-                if hydrated
-                {
+            } else {
+                if hydrated {
                     return CacheLookupSuccess::Refresh(value);
-                }
-                else
-                {
+                } else {
                     return CacheLookupSuccess::Stale(value);
                 }
             }
