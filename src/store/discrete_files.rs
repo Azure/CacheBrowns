@@ -7,6 +7,45 @@ use crate::store::CacheStoreStrategy;
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use uuid::Uuid;
 
+fn get<Serde, T>(path: PathBuf) -> Option<T>
+    where T: Serialize + for<'a> Deserialize<'a>,
+          Serde : DiscreteFileSerializerDeserializer<T>
+{
+    if let Ok(file) = File::open(path) {
+        return Some(Serde::deserialize(BufReader::new(file))?);
+    }
+
+    None
+}
+
+fn put<Serde, T>(path: PathBuf, value: T)
+    where T: Serialize + for<'a> Deserialize<'a>,
+          Serde : DiscreteFileSerializerDeserializer<T>
+{
+    if let Ok(file) = File::create(path) {
+        Serde::serialize(value, BufWriter::new(file))
+    }
+}
+
+fn delete(path: &PathBuf) -> bool {
+    return std::fs::remove_file(path).is_ok();
+}
+
+fn flush(directory: PathBuf) {
+    let _ = std::fs::remove_dir_all(directory);
+}
+
+fn get_or_create_index_entry<Key>(cache_directory: &PathBuf, index : &mut HashMap<Key, PathBuf>, key: Key) -> PathBuf
+    where Key: Eq, Key: Hash
+{
+    index.entry(key).or_insert_with(|| -> PathBuf {
+        let mut path = PathBuf::new();
+        path.push(cache_directory.clone());
+        path.push(Uuid::new_v4().hyphenated().to_string());
+        path
+    }).clone()
+}
+
 /// Before using, strongly consider using the volatile version. Do you really need this cache to
 /// rehydrate without hitting the source of record? You are sacrificing reboot to clear corruption
 /// and now must consider N vs N+1 schema issues when downgrading or upgrading your application.
@@ -26,7 +65,7 @@ impl<Key, Serde, T> DiscreteFileCacheStoreNonVolatile<Key, Serde, T>
           T: Serialize + for<'a> Deserialize<'a>,
           Serde : DiscreteFileSerializerDeserializer<T>
 {
-    pub fn new(cache_directory: PathBuf, serde: Serde) -> Self {
+    pub fn new(cache_directory: PathBuf) -> Self {
         Self {
             cache_directory,
             index: HashMap::new(),
@@ -43,37 +82,27 @@ impl<Key, Serde, Value> CacheStoreStrategy<Key, Value> for DiscreteFileCacheStor
 {
     fn get(&self, key: &Key) -> Option<Value> {
         if let Some(path) = self.index.get(key) {
-            if let Ok(file) = File::open(path) {
-                return Some(Serde::deserialize(BufReader::new(file))?.value);
-            }
+            return Some(get::<Serde, Record<Key, Value>>(path.clone())?.value);
         }
 
         None
     }
 
     fn put(&mut self, key: &Key, value: Value) {
-        let entry = self.index.entry((*key).clone()).or_insert_with(|| -> PathBuf {
-            let mut path = PathBuf::new();
-            path.push(self.cache_directory.clone());
-            path.push(Uuid::new_v4().hyphenated().to_string());
-            path
-        });
-
-        if let Ok(file) = File::create(entry) {
-            Serde::serialize(Record { key: (*key).clone(), value }, BufWriter::new(file))
-        }
+        let path = get_or_create_index_entry(&self.cache_directory, &mut self.index, (*key).clone());
+        put::<Serde, Record<Key, Value>>(path, Record { key: (*key).clone(), value })
     }
 
     fn delete(&mut self, key: &Key) -> bool {
         if let Some(path) = self.index.get(key) {
-            return std::fs::remove_file(path).is_ok();
+            return delete(path);
         }
 
         false
     }
 
     fn flush(&mut self) {
-        let _ = std::fs::remove_dir_all(self.cache_directory.clone());
+        flush(self.cache_directory.clone())
     }
 }
 
