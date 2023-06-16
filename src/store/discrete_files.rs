@@ -1,6 +1,6 @@
 use crate::store::CacheStoreStrategy;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::fs::File;
 use std::hash::Hash;
@@ -11,7 +11,7 @@ use uuid::Uuid;
 /// Before using, strongly consider using the volatile version. Do you really need this cache to
 /// rehydrate without hitting the source of record? You are sacrificing reboot to clear corruption
 /// and now must consider N vs N+1 schema issues when downgrading or upgrading your application.
-pub struct DiscreteFileCacheStoreNonVolatile<Key, Value, Serde>
+pub struct DiscreteFileStoreNonVolatile<Key, Value, Serde>
 where
     Key: Clone + Eq + Hash + Serialize + for<'a> Deserialize<'a>,
     Value: Serialize + for<'a> Deserialize<'a>,
@@ -25,7 +25,7 @@ where
 
 // TODO: refactor unnecessary clones (e.g. of path)
 
-impl<Key, Value, Serde> DiscreteFileCacheStoreNonVolatile<Key, Record<Key, Value>, Serde>
+impl<Key, Value, Serde> DiscreteFileStoreNonVolatile<Key, Record<Key, Value>, Serde>
 where
     Key: Clone + Eq + Hash + Serialize + for<'a> Deserialize<'a>,
     Value: Serialize + for<'a> Deserialize<'a>,
@@ -43,9 +43,7 @@ where
         store
     }
 
-    fn rehydrate_index(
-        store: &mut DiscreteFileCacheStoreNonVolatile<Key, Record<Key, Value>, Serde>,
-    ) {
+    fn rehydrate_index(store: &mut DiscreteFileStoreNonVolatile<Key, Record<Key, Value>, Serde>) {
         fs::create_dir_all(store.cache_directory.as_path()).unwrap();
 
         if let Ok(paths) = fs::read_dir(store.cache_directory.as_path()) {
@@ -61,7 +59,7 @@ where
 }
 
 impl<Key, Value, Serde> CacheStoreStrategy<Key, Value>
-    for DiscreteFileCacheStoreNonVolatile<Key, Record<Key, Value>, Serde>
+    for DiscreteFileStoreNonVolatile<Key, Record<Key, Value>, Serde>
 where
     Key: Clone + Eq + Hash + Serialize + for<'a> Deserialize<'a>,
     Value: Serialize + for<'a> Deserialize<'a>,
@@ -73,6 +71,10 @@ where
         }
 
         None
+    }
+
+    fn peek(&self, key: &Key) -> Option<Value> {
+        self.get(key)
     }
 
     fn put(&mut self, key: &Key, value: Value) {
@@ -94,9 +96,17 @@ where
     fn flush(&mut self) {
         flush(self.cache_directory.clone())
     }
+
+    fn get_keys(&self) -> HashSet<Key> {
+        HashSet::from_iter(self.index.keys().map(|key| key.clone()))
+    }
+
+    fn contains(&self, key: &Key) -> bool {
+        self.index.contains_key(key)
+    }
 }
 
-pub struct DiscreteFileCacheStoreVolatile<Key, Value, Serde>
+pub struct DiscreteFileStoreVolatile<Key, Value, Serde>
 where
     Key: Clone + Eq + Hash + Serialize + for<'a> Deserialize<'a>,
     Value: Serialize + for<'a> Deserialize<'a>,
@@ -108,7 +118,7 @@ where
     phantom_value: std::marker::PhantomData<Value>,
 }
 
-impl<Key, Value, Serde> DiscreteFileCacheStoreVolatile<Key, Value, Serde>
+impl<Key, Value, Serde> DiscreteFileStoreVolatile<Key, Value, Serde>
 where
     Key: Clone + Eq + Hash + Serialize + for<'a> Deserialize<'a>,
     Value: Serialize + for<'a> Deserialize<'a>,
@@ -129,7 +139,7 @@ where
 }
 
 impl<Key, Value, Serde> CacheStoreStrategy<Key, Value>
-    for DiscreteFileCacheStoreVolatile<Key, Value, Serde>
+    for DiscreteFileStoreVolatile<Key, Value, Serde>
 where
     Key: Clone + Eq + Hash + Serialize + for<'a> Deserialize<'a>,
     Value: Serialize + for<'a> Deserialize<'a>,
@@ -141,6 +151,10 @@ where
         }
 
         None
+    }
+
+    fn peek(&self, key: &Key) -> Option<Value> {
+        self.get(key)
     }
 
     fn put(&mut self, key: &Key, value: Value) {
@@ -155,6 +169,14 @@ where
 
     fn flush(&mut self) {
         flush(self.cache_directory.clone())
+    }
+
+    fn get_keys(&self) -> HashSet<Key> {
+        HashSet::from_iter(self.index.keys().map(|key| key.clone()))
+    }
+
+    fn contains(&self, key: &Key) -> bool {
+        self.index.contains_key(key)
     }
 }
 
@@ -236,7 +258,7 @@ where
     fn deserialize(buffered_reader: BufReader<File>) -> Option<Value>;
 }
 
-struct JsonDiscreteFileSerializerDeserializer<Value>
+pub struct JsonDiscreteFileSerializerDeserializer<Value>
 where
     for<'a> Value: Serialize + Deserialize<'a>,
 {
@@ -257,7 +279,7 @@ where
     }
 }
 
-struct BincodeDiscreteFileSerializerDeserializer<Value>
+pub struct BincodeDiscreteFileSerializerDeserializer<Value>
 where
     for<'a> Value: Serialize + Deserialize<'a>,
 {
@@ -278,11 +300,11 @@ where
     }
 }
 
-pub type DiscreteFileCacheStoreNonVolatileBincode<Key, Value> =
-    DiscreteFileCacheStoreNonVolatile<Key, Value, BincodeDiscreteFileSerializerDeserializer<Value>>;
-pub type DiscreteFileCacheStoreVolatileBincode<Key, Value> =
-    DiscreteFileCacheStoreVolatile<Key, Value, BincodeDiscreteFileSerializerDeserializer<Value>>;
-pub type DiscreteFileCacheStoreNonVolatileJson<Key, Value> =
-    DiscreteFileCacheStoreNonVolatile<Key, Value, JsonDiscreteFileSerializerDeserializer<Value>>;
-pub type DiscreteFileCacheStoreVolatileJson<Key, Value> =
-    DiscreteFileCacheStoreVolatile<Key, Value, JsonDiscreteFileSerializerDeserializer<Value>>;
+pub type DiscreteFileStoreNonVolatileBincode<Key, Value> =
+    DiscreteFileStoreNonVolatile<Key, Value, BincodeDiscreteFileSerializerDeserializer<Value>>;
+pub type DiscreteFileStoreVolatileBincode<Key, Value> =
+    DiscreteFileStoreVolatile<Key, Value, BincodeDiscreteFileSerializerDeserializer<Value>>;
+pub type DiscreteFileStoreNonVolatileJson<Key, Value> =
+    DiscreteFileStoreNonVolatile<Key, Value, JsonDiscreteFileSerializerDeserializer<Value>>;
+pub type DiscreteFileStoreVolatileJson<Key, Value> =
+    DiscreteFileStoreVolatile<Key, Value, JsonDiscreteFileSerializerDeserializer<Value>>;

@@ -1,14 +1,14 @@
-use crate::store::{CacheStoreStrategy, KeyTrackingStore};
+use crate::store::CacheStoreStrategy;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]
-pub struct MemoryCacheStore<Key, Value> {
+pub struct MemoryStore<Key, Value> {
     data: HashMap<Key, Value>,
 }
 
-impl<Key, Value> MemoryCacheStore<Key, Value> {
+impl<Key, Value> MemoryStore<Key, Value> {
     pub fn new() -> Self {
-        MemoryCacheStore {
+        MemoryStore {
             data: HashMap::new(),
         }
     }
@@ -16,10 +16,14 @@ impl<Key, Value> MemoryCacheStore<Key, Value> {
 
 // TODO: Should everything be by ref return? Does that have concurrency issues?
 impl<Key: Eq + Clone + std::hash::Hash, Value: Clone> CacheStoreStrategy<Key, Value>
-    for MemoryCacheStore<Key, Value>
+    for MemoryStore<Key, Value>
 {
     fn get(&self, key: &Key) -> Option<Value> {
-        self.data.get(key).map(Value::to_owned)
+        self.data.get(key).cloned()
+    }
+
+    fn peek(&self, key: &Key) -> Option<Value> {
+        self.get(key)
     }
 
     fn put(&mut self, key: &Key, value: Value) {
@@ -33,11 +37,7 @@ impl<Key: Eq + Clone + std::hash::Hash, Value: Clone> CacheStoreStrategy<Key, Va
     fn flush(&mut self) {
         self.data.clear();
     }
-}
 
-impl<Key: Eq + Clone + std::hash::Hash, Value: Clone> KeyTrackingStore<Key, Value>
-    for MemoryCacheStore<Key, Value>
-{
     fn get_keys(&self) -> HashSet<Key> {
         self.data.keys().map(|x| x.clone()).collect()
     }

@@ -3,7 +3,7 @@ pub trait SourceOfRecord<Key, Value> {
 
     /// Accepts current value if one exists in case it can be used for optimized load
     /// ex. If building an HTTP cache, and you receive a 304 response, replay the current value
-    fn retrieve_with_hint(&self, key: &Key, current_value: &Value) -> Option<Value> {
+    fn retrieve_with_hint(&self, key: &Key, _current_value: &Value) -> Option<Value> {
         //The default case is no current value based optimization, so provide pass-through implementation
         self.retrieve(key)
     }
