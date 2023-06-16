@@ -1,5 +1,5 @@
 use crate::store::CacheStoreStrategy;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct MemoryStore<Key, Value> {
@@ -38,8 +38,8 @@ impl<Key: Eq + Clone + std::hash::Hash, Value: Clone> CacheStoreStrategy<Key, Va
         self.data.clear();
     }
 
-    fn get_keys(&self) -> HashSet<Key> {
-        self.data.keys().map(|x| x.clone()).collect()
+    fn get_keys(&self) -> Box<dyn Iterator<Item=Key> + '_> {
+        Box::new(self.data.keys().map(|x| x.clone()))
     }
 
     fn contains(&self, key: &Key) -> bool {

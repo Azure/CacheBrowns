@@ -67,7 +67,7 @@ where
             while shared_inner_state.alive.load(Ordering::Relaxed) {
                 let start = Instant::now();
 
-                let keys = shared_inner_state.store.read().unwrap().get_keys();
+                let keys: Vec<Key> = shared_inner_state.store.read().unwrap().get_keys().collect();
                 for key in keys {
                     if !shared_inner_state.alive.load(Ordering::Relaxed) {
                         break;

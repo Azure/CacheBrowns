@@ -24,7 +24,7 @@ pub trait CacheStoreStrategy<Key, Value> {
     fn flush(&mut self);
 
     // todo make this a generic iterator
-    fn get_keys(&self) -> HashSet<Key>;
+    fn get_keys(&self) -> Box<dyn Iterator<Item=Key> + '_>;
 
     fn contains(&self, key: &Key) -> bool;
 }

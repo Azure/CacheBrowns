@@ -1,6 +1,6 @@
 use crate::store::CacheStoreStrategy;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::hash::Hash;
@@ -97,8 +97,9 @@ where
         flush(self.cache_directory.clone())
     }
 
-    fn get_keys(&self) -> HashSet<Key> {
-        HashSet::from_iter(self.index.keys().map(|key| key.clone()))
+    //noinspection DuplicatedCode
+    fn get_keys(&self) -> Box<dyn Iterator<Item=Key> + '_> {
+        Box::new(self.index.keys().map(|key| key.clone()))
     }
 
     fn contains(&self, key: &Key) -> bool {
@@ -171,8 +172,9 @@ where
         flush(self.cache_directory.clone())
     }
 
-    fn get_keys(&self) -> HashSet<Key> {
-        HashSet::from_iter(self.index.keys().map(|key| key.clone()))
+    //noinspection DuplicatedCode
+    fn get_keys(&self) -> Box<dyn Iterator<Item=Key> + '_> {
+        Box::new(self.index.keys().map(|key| key.clone()))
     }
 
     fn contains(&self, key: &Key) -> bool {
