@@ -1,5 +1,6 @@
 pub mod discrete_files;
 pub mod memory;
+pub mod replacement;
 
 use std::collections::HashSet;
 
