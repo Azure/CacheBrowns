@@ -38,7 +38,7 @@ impl<Key: Eq + Clone + std::hash::Hash, Value: Clone> CacheStoreStrategy<Key, Va
         self.data.clear();
     }
 
-    fn get_keys(&self) -> Box<dyn Iterator<Item=Key> + '_> {
+    fn get_keys(&self) -> Box<dyn Iterator<Item = Key> + '_> {
         Box::new(self.data.keys().map(|x| x.clone()))
     }
 

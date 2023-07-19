@@ -98,7 +98,7 @@ where
     }
 
     //noinspection DuplicatedCode
-    fn get_keys(&self) -> Box<dyn Iterator<Item=Key> + '_> {
+    fn get_keys(&self) -> Box<dyn Iterator<Item = Key> + '_> {
         Box::new(self.index.keys().map(|key| key.clone()))
     }
 
@@ -173,7 +173,7 @@ where
     }
 
     //noinspection DuplicatedCode
-    fn get_keys(&self) -> Box<dyn Iterator<Item=Key> + '_> {
+    fn get_keys(&self) -> Box<dyn Iterator<Item = Key> + '_> {
         Box::new(self.index.keys().map(|key| key.clone()))
     }
 

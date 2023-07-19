@@ -2,8 +2,6 @@ pub mod discrete_files;
 pub mod memory;
 pub mod replacement;
 
-use std::collections::HashSet;
-
 pub trait CacheStoreStrategy<Key, Value> {
     fn get(&self, key: &Key) -> Option<Value>;
 
@@ -25,7 +23,7 @@ pub trait CacheStoreStrategy<Key, Value> {
     fn flush(&mut self);
 
     // todo make this a generic iterator
-    fn get_keys(&self) -> Box<dyn Iterator<Item=Key> + '_>;
+    fn get_keys(&self) -> Box<dyn Iterator<Item = Key> + '_>;
 
     fn contains(&self, key: &Key) -> bool;
 }

@@ -1,8 +1,8 @@
 use core::hash::Hash;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use interruptible_polling::PollingTask;
+use std::num::TryFromIntError;
 use std::sync::{Arc, RwLock};
-use std::thread::{self};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use crate::source_of_record::SourceOfRecord;
 use crate::store::CacheStoreStrategy;
@@ -11,23 +11,12 @@ use super::{CacheHydrationStrategy, CacheLookupSuccess, StoreResult};
 
 pub struct PollingHydrationStrategy<Key, Value> {
     shared_inner_state: Arc<InnerState<Key, Value>>,
+    _polling_thread: PollingTask,
 }
 
 struct InnerState<Key, Value> {
     data_source: Box<dyn SourceOfRecord<Key, Value> + Send + Sync>,
     store: RwLock<Box<dyn CacheStoreStrategy<Key, Value> + Send + Sync>>,
-    polling_interval: AtomicU64,
-    alive: AtomicBool,
-}
-
-impl<Key, Value> Drop for PollingHydrationStrategy<Key, Value> {
-    fn drop(&mut self) {
-        // Relaxed is fine because we just care that the signal is eventually
-        // observed.
-        self.shared_inner_state
-            .alive
-            .store(false, Ordering::Relaxed);
-    }
 }
 
 pub enum PollHydrationError {
@@ -39,79 +28,65 @@ where
     Key: Eq + Hash + Clone + 'static,
     Value: Clone + 'static,
 {
-    fn new(
+    pub fn new(
         data_source: Box<dyn SourceOfRecord<Key, Value> + Send + Sync>,
         store: Box<dyn CacheStoreStrategy<Key, Value> + Send + Sync>,
-        polling_interval: u64,
-    ) -> Self {
+        polling_interval: Duration,
+    ) -> Result<Self, TryFromIntError> {
+        let shared_state = Arc::new(InnerState {
+            data_source,
+            store: RwLock::from(store),
+        });
+
         let hydrator = Self {
-            shared_inner_state: Arc::new(InnerState {
-                data_source,
-                store: RwLock::from(store),
-                polling_interval: AtomicU64::new(polling_interval),
-                alive: AtomicBool::new(true),
-            }),
+            shared_inner_state: shared_state.clone(),
+            _polling_thread: PollingTask::new(
+                polling_interval,
+                Box::new(move || {
+                    Self::start_thread(&shared_state);
+                }),
+            )?,
         };
 
-        hydrator.start_thread();
-
-        hydrator
+        Ok(hydrator)
     }
 
-    fn start_thread(&self) {
-        let shared_inner_state = Arc::clone(&self.shared_inner_state);
+    fn start_thread(shared_inner_state: &Arc<InnerState<Key, Value>>) {
+        let keys: Vec<Key> = shared_inner_state
+            .store
+            .read()
+            .unwrap()
+            .get_keys()
+            .collect();
+        for key in keys {
+            // if !shared_inner_state.alive.load(Ordering::Relaxed) {
+            //     break;
+            // }
 
-        // TODO: Refactor this with InterruptablePolling crate
-        thread::spawn(move || {
-            // Check whether the associated struct is alive for clean exit
-            while shared_inner_state.alive.load(Ordering::Relaxed) {
-                let start = Instant::now();
+            let value = shared_inner_state.store.read().unwrap().peek(&key);
 
-                let keys: Vec<Key> = shared_inner_state.store.read().unwrap().get_keys().collect();
-                for key in keys {
-                    if !shared_inner_state.alive.load(Ordering::Relaxed) {
-                        break;
-                    }
-
-                    let value = shared_inner_state.store.read().unwrap().peek(&key);
-
-                    // Don't update the value if it
-                    // 1. exists and
-                    // 2. is valid.
-                    if match value.as_ref() {
-                        None => false,
-                        Some(v) => shared_inner_state.data_source.is_valid(&key, v),
-                    } {
-                        continue;
-                    }
-
-                    let canonical_value = value.map_or_else(
-                        || shared_inner_state.data_source.retrieve(&key),
-                        |v| shared_inner_state.data_source.retrieve_with_hint(&key, &v),
-                    );
-
-                    if let Some(v) = canonical_value.as_ref() {
-                        let mut store_handle = shared_inner_state.store.write().unwrap();
-                        if store_handle.contains(&key) {
-                            store_handle.put(&key, v.clone());
-                        }
-                    }
-                }
-
-                let elapsed = Instant::now().duration_since(start);
-
-                thread::sleep(
-                    Duration::new(
-                        // Races with the interval changing are incredibly
-                        // unimportant so let's give the least strict
-                        // ordering necessary.
-                        shared_inner_state.polling_interval.load(Ordering::Relaxed),
-                        0,
-                    )
-                    .saturating_sub(elapsed),
-                );
+            // Don't update the value if it
+            // 1. exists and
+            // 2. is valid.
+            if match value.as_ref() {
+                None => false,
+                Some(v) => shared_inner_state.data_source.is_valid(&key, v),
+            } {
+                continue;
             }
-        });
+
+            let canonical_value = value.map_or_else(
+                || shared_inner_state.data_source.retrieve(&key),
+                |v| shared_inner_state.data_source.retrieve_with_hint(&key, &v),
+            );
+
+            if let Some(v) = canonical_value.as_ref() {
+                let mut store_handle = shared_inner_state.store.write().unwrap();
+                if store_handle.contains(&key) {
+                    store_handle.put(&key, v.clone());
+                }
+            }
+        }
     }
 }
 
@@ -160,7 +135,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, sync::Mutex};
+    use std::{collections::HashMap, sync::Mutex, thread};
+    use std::sync::atomic::{AtomicU64, Ordering};
 
     use crate::store::memory::MemoryStore;
 
@@ -281,8 +257,12 @@ mod tests {
         source.insert(key_1, String::from("AAAA"));
         source.insert(key_2, String::from("AAAAAAAA"));
 
-        let mut cache =
-            PollingHydrationStrategy::new(Box::new(source), Box::new(MemoryStore::new()), 1);
+        let mut cache = PollingHydrationStrategy::new(
+            Box::new(source),
+            Box::new(MemoryStore::new()),
+            Duration::from_secs(1),
+        )
+        .unwrap();
 
         assert_eq!(
             cache.get(&key_1),
@@ -304,8 +284,12 @@ mod tests {
         source.insert(key_1, String::from("AAAA"));
         source.insert(key_2, String::from("AAAAAAAA"));
 
-        let mut cache =
-            PollingHydrationStrategy::new(Box::new(source), Box::new(MemoryStore::new()), 1);
+        let mut cache = PollingHydrationStrategy::new(
+            Box::new(source),
+            Box::new(MemoryStore::new()),
+            Duration::from_secs(1),
+        )
+        .unwrap();
 
         assert_eq!(cache.get(&key_3), None);
         assert_eq!(cache.get(&key_3), None);
@@ -319,8 +303,12 @@ mod tests {
         source.insert(key_1, 0);
         source.insert(key_2, 1);
 
-        let mut cache =
-            PollingHydrationStrategy::new(Box::new(source), Box::new(MemoryStore::new()), 1);
+        let mut cache = PollingHydrationStrategy::new(
+            Box::new(source),
+            Box::new(MemoryStore::new()),
+            Duration::from_secs(1),
+        )
+        .unwrap();
 
         assert_eq!(cache.get(&key_1), Some(CacheLookupSuccess::Miss(0)));
 
@@ -330,8 +318,12 @@ mod tests {
     #[test]
     fn poll_hydration_update_after_poll() {
         let source = IncrementingSource::new();
-        let mut cache =
-            PollingHydrationStrategy::new(Box::new(source), Box::new(MemoryStore::new()), 2);
+        let mut cache = PollingHydrationStrategy::new(
+            Box::new(source),
+            Box::new(MemoryStore::new()),
+            Duration::from_secs(2),
+        )
+        .unwrap();
         let key = String::from("asdf");
 
         // First lookup is a miss
@@ -359,8 +351,12 @@ mod tests {
         source.insert(key_1, String::from("AAAA"));
         source.insert(key_2, String::from("AAAAAAAA"));
 
-        let mut cache =
-            PollingHydrationStrategy::new(Box::new(source), Box::new(MemoryStore::new()), 1);
+        let mut cache = PollingHydrationStrategy::new(
+            Box::new(source),
+            Box::new(MemoryStore::new()),
+            Duration::from_secs(1),
+        )
+        .unwrap();
 
         assert_eq!(
             cache.get(&key_1),
