@@ -1,5 +1,5 @@
 use core::hash::Hash;
-use interruptible_polling::PollingTask;
+use interruptible_polling::{PollingTask, StillActiveChecker};
 use std::num::TryFromIntError;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
@@ -40,10 +40,10 @@ where
 
         let hydrator = Self {
             shared_inner_state: shared_state.clone(),
-            _polling_thread: PollingTask::new(
+            _polling_thread: PollingTask::new_with_checker(
                 polling_interval,
-                Box::new(move || {
-                    Self::start_thread(&shared_state);
+                Box::new(move |checker| {
+                    Self::poll(&shared_state, checker);
                 }),
             )?,
         };
@@ -51,7 +51,7 @@ where
         Ok(hydrator)
     }
 
-    fn start_thread(shared_inner_state: &Arc<InnerState<Key, Value>>) {
+    fn poll(shared_inner_state: &Arc<InnerState<Key, Value>>, checker: &StillActiveChecker) {
         let keys: Vec<Key> = shared_inner_state
             .store
             .read()
@@ -59,9 +59,9 @@ where
             .get_keys()
             .collect();
         for key in keys {
-            // if !shared_inner_state.alive.load(Ordering::Relaxed) {
-            //     break;
-            // }
+            if !checker() {
+                break;
+            }
 
             let value = shared_inner_state.store.read().unwrap().peek(&key);
 
