@@ -58,32 +58,28 @@ where
             .unwrap()
             .get_keys()
             .collect();
+
         for key in keys {
             if !checker() {
                 break;
             }
 
-            let value = shared_inner_state.store.read().unwrap().peek(&key);
+            // Fetch separately to release the lock
+            let peeked_value = shared_inner_state.store.read().unwrap().peek(&key);
 
-            // Don't update the value if it
-            // 1. exists and
-            // 2. is valid.
-            if match value.as_ref() {
-                None => false,
-                Some(v) => shared_inner_state.data_source.is_valid(&key, v),
-            } {
-                continue;
-            }
+            // If value was deleted since pulling keys, don't issue a superfluous retrieve.
+            if let Some(value) = peeked_value {
+                let canonical_value = shared_inner_state
+                    .data_source
+                    .retrieve_with_hint(&key, &value);
 
-            let canonical_value = value.map_or_else(
-                || shared_inner_state.data_source.retrieve(&key),
-                |v| shared_inner_state.data_source.retrieve_with_hint(&key, &v),
-            );
+                if let Some(v) = canonical_value.as_ref() {
+                    let mut store_handle = shared_inner_state.store.write().unwrap();
 
-            if let Some(v) = canonical_value.as_ref() {
-                let mut store_handle = shared_inner_state.store.write().unwrap();
-                if store_handle.contains(&key) {
-                    store_handle.put(&key, v.clone());
+                    // Respect delete if delete occurred during retrieval
+                    if store_handle.contains(&key) {
+                        store_handle.put(&key, v.clone());
+                    }
                 }
             }
         }
@@ -135,8 +131,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, sync::Mutex, thread};
     use std::sync::atomic::{AtomicU64, Ordering};
+    use std::{collections::HashMap, sync::Mutex, thread};
 
     use crate::store::memory::MemoryStore;
 
@@ -201,15 +197,12 @@ mod tests {
         fn retrieve(&self, key: &Uuid) -> Option<u64> {
             // Immediately remove the value once we retrieve it once.
             // We need a Mutex for this because this takes &self.
-            self.inner
-                .get(key)
-                .map(|x| {
-                    let mut v = x.lock().unwrap();
-                    let previous = *v;
-                    *v = None;
-                    previous
-                })
-                .flatten()
+            self.inner.get(key).and_then(|x| {
+                let mut v = x.lock().unwrap();
+                let previous = *v;
+                *v = None;
+                previous
+            })
         }
 
         fn retrieve_with_hint(&self, key: &Uuid, _value: &u64) -> Option<u64> {

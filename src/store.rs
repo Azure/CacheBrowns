@@ -1,3 +1,5 @@
+use crate::store::memory::KeyIterator;
+
 pub mod discrete_files;
 pub mod memory;
 pub mod replacement;
@@ -17,23 +19,12 @@ pub trait CacheStoreStrategy<Key, Value> {
 
     fn put(&mut self, key: &Key, value: Value);
 
-    // not sure if the bool is necessary, forget why it's there off hand
+    // TODO: not sure if the bool is necessary, forget why it's there off hand
     fn delete(&mut self, key: &Key) -> bool;
 
     fn flush(&mut self);
 
-    // todo make this a generic iterator
-    fn get_keys(&self) -> Box<dyn Iterator<Item = Key> + '_>;
+    fn get_keys(&self) -> KeyIterator<Key>;
 
     fn contains(&self, key: &Key) -> bool;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn happy_path_serialize_deserialize() {
-        assert_eq!(2, 2);
-    }
 }

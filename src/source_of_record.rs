@@ -17,15 +17,15 @@ pub struct HttpDataSourceOfRecord {}
 impl HttpDataSourceOfRecord {}
 
 impl<Key, Value> SourceOfRecord<Key, Value> for HttpDataSourceOfRecord {
-    fn retrieve(&self, key: &Key) -> Option<Value> {
+    fn retrieve(&self, _key: &Key) -> Option<Value> {
         todo!()
     }
 
-    fn retrieve_with_hint(&self, key: &Key, current_value: &Value) -> Option<Value> {
+    fn retrieve_with_hint(&self, _key: &Key, _current_value: &Value) -> Option<Value> {
         todo!()
     }
 
-    fn is_valid(&self, key: &Key, value: &Value) -> bool {
+    fn is_valid(&self, _key: &Key, _value: &Value) -> bool {
         todo!()
     }
 }

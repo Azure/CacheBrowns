@@ -1,3 +1,4 @@
+use crate::store::memory::KeyIterator;
 use crate::store::CacheStoreStrategy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -5,7 +6,7 @@ use std::fs;
 use std::fs::File;
 use std::hash::Hash;
 use std::io::{BufReader, BufWriter};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
 /// Before using, strongly consider using the volatile version. Do you really need this cache to
@@ -47,11 +48,9 @@ where
         fs::create_dir_all(store.cache_directory.as_path()).unwrap();
 
         if let Ok(paths) = fs::read_dir(store.cache_directory.as_path()) {
-            for path in paths {
-                if let Ok(path) = path {
-                    if let Some(record) = get::<Serde, Record<Key, Value>>(path.path()) {
-                        store.index.insert(record.key, path.path());
-                    }
+            for path in paths.flatten() {
+                if let Some(record) = get::<Serde, Record<Key, Value>>(path.path()) {
+                    store.index.insert(record.key, path.path());
                 }
             }
         }
@@ -98,8 +97,8 @@ where
     }
 
     //noinspection DuplicatedCode
-    fn get_keys(&self) -> Box<dyn Iterator<Item = Key> + '_> {
-        Box::new(self.index.keys().map(|key| key.clone()))
+    fn get_keys(&self) -> KeyIterator<Key> {
+        Box::new(self.index.keys().cloned())
     }
 
     fn contains(&self, key: &Key) -> bool {
@@ -173,8 +172,8 @@ where
     }
 
     //noinspection DuplicatedCode
-    fn get_keys(&self) -> Box<dyn Iterator<Item = Key> + '_> {
-        Box::new(self.index.keys().map(|key| key.clone()))
+    fn get_keys(&self) -> KeyIterator<Key> {
+        Box::new(self.index.keys().cloned())
     }
 
     fn contains(&self, key: &Key) -> bool {
@@ -188,7 +187,7 @@ where
     Serde: DiscreteFileSerializerDeserializer<Value>,
 {
     if let Ok(file) = File::open(path) {
-        return Some(Serde::deserialize(BufReader::new(file))?);
+        return Serde::deserialize(BufReader::new(file));
     }
 
     None
@@ -210,18 +209,18 @@ where
     Key: Hash,
 {
     if let Some(path) = index.remove(key) {
-        return std::fs::remove_file(path).is_ok();
+        return fs::remove_file(path).is_ok();
     }
 
     false
 }
 
 fn flush(directory: PathBuf) {
-    let _ = std::fs::remove_dir_all(directory);
+    let _ = fs::remove_dir_all(directory);
 }
 
 fn get_or_create_index_entry<Key>(
-    cache_directory: &PathBuf,
+    cache_directory: &Path,
     index: &mut HashMap<Key, PathBuf>,
     key: Key,
 ) -> PathBuf
@@ -233,7 +232,7 @@ where
         .entry(key)
         .or_insert_with(|| -> PathBuf {
             let mut path = PathBuf::new();
-            path.push(cache_directory.clone());
+            path.push(cache_directory);
             path.push(Uuid::new_v4().hyphenated().to_string());
             path
         })

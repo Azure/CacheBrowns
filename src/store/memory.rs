@@ -14,6 +14,8 @@ impl<Key, Value> MemoryStore<Key, Value> {
     }
 }
 
+pub type KeyIterator<'a, Key> = Box<dyn Iterator<Item = Key> + 'a>;
+
 // TODO: Should everything be by ref return? Does that have concurrency issues?
 impl<Key: Eq + Clone + std::hash::Hash, Value: Clone> CacheStoreStrategy<Key, Value>
     for MemoryStore<Key, Value>
@@ -38,8 +40,8 @@ impl<Key: Eq + Clone + std::hash::Hash, Value: Clone> CacheStoreStrategy<Key, Va
         self.data.clear();
     }
 
-    fn get_keys(&self) -> Box<dyn Iterator<Item = Key> + '_> {
-        Box::new(self.data.keys().map(|x| x.clone()))
+    fn get_keys(&self) -> KeyIterator<Key> {
+        Box::new(self.data.keys().cloned())
     }
 
     fn contains(&self, key: &Key) -> bool {
