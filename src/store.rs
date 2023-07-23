@@ -13,7 +13,7 @@ pub trait CacheStoreStrategy<Key, Value> {
     /// signals to any layer that a platform read has occurred that should be ignored for usage
     /// tracking purposes.
     ///
-    /// For leaf nodes, you implement this as a call to [`get`], however no default is offered to
+    /// For leaf nodes, you implement this as a call to [`CacheStoreStrategy::get`], however no default is offered to
     /// ensure the implementor has thought through whether or not they have side effects.
     fn peek(&self, key: &Key) -> Option<Value>;
 

@@ -26,5 +26,3 @@ jobs:
         run: cargo test --verbose
       - name: Docs
         run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
-        env:
-          RUSTDOCFLAGS: "-D warnings"
