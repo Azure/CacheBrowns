@@ -1,76 +1,30 @@
 pub mod discrete_files;
 pub mod memory;
+pub mod replacement;
 
-use std::collections::HashSet;
+pub type KeyIterator<'a, Key> = Box<dyn Iterator<Item = Key> + 'a>;
 
 pub trait CacheStoreStrategy<Key, Value> {
     fn get(&self, key: &Key) -> Option<Value>;
 
+    /// A platform read of a value. When replacement strategies are used (e.g. LRU) reads have side
+    /// effects that update internal tracking. If hydration requires inspecting the current state,
+    /// these reads will skew tracking. Peek allows you to inspect state without side effects, it
+    /// signals to any layer that a platform read has occurred that should be ignored for usage
+    /// tracking purposes.
+    ///
+    /// For leaf nodes, you implement this as a call to [`CacheStoreStrategy::get`], however no default is offered to
+    /// ensure the implementor has thought through whether or not they have side effects.
+    fn peek(&self, key: &Key) -> Option<Value>;
+
     fn put(&mut self, key: &Key, value: Value);
 
-    // not sure if the bool is necessary, forget why it's there off hand
+    // TODO: not sure if the bool is necessary, forget why it's there off hand
     fn delete(&mut self, key: &Key) -> bool;
 
     fn flush(&mut self);
-}
 
-pub trait KeyTrackingStore<Key, Value>: CacheStoreStrategy<Key, Value> {
-    // todo make this a generic iterator
-    fn get_keys(&self) -> HashSet<Key>;
+    fn get_keys(&self) -> KeyIterator<Key>;
 
     fn contains(&self, key: &Key) -> bool;
-}
-
-pub struct KeyTrackedStore<Key, Value> {
-    store: Box<dyn CacheStoreStrategy<Key, Value>>,
-    keys: HashSet<Key>
-}
-
-impl<Key, Value> KeyTrackedStore<Key, Value> {
-    pub fn new(store: Box<dyn CacheStoreStrategy<Key, Value>>) -> Self {
-        Self { store, keys: Default::default() }
-    }
-}
-
-impl<Key: Eq + Clone + std::hash::Hash, Value> CacheStoreStrategy<Key, Value> for KeyTrackedStore<Key, Value> {
-    fn get(&self, key: &Key) -> Option<Value> {
-        self.store.get(key)
-    }
-
-    fn put(&mut self, key: &Key, value: Value) {
-        self.keys.insert(key.clone());
-        self.store.put(key, value);
-    }
-
-    fn delete(&mut self, key: &Key) -> bool {
-        self.keys.remove(key);
-        self.store.delete(key)
-    }
-
-    fn flush(&mut self) {
-        self.keys.clear();
-        self.store.flush();
-    }
-}
-
-impl<Key: Eq + Clone + std::hash::Hash, Value> KeyTrackingStore<Key, Value> for KeyTrackedStore<Key, Value> {
-    fn get_keys(&self) -> HashSet<Key> {
-        self.keys.clone()
-    }
-
-    fn contains(&self, key: &Key) -> bool {
-        self.keys.contains(key)
-    }
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn happy_path_serialize_deserialize() {
-
-        assert_eq!(2, 2);
-    }
 }

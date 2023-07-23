@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->
+
 # CacheBrowns
 
 Experimental implementation of a programmable managed cached for native applications. This is a general purpose header
@@ -35,3 +37,14 @@ or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general)
 . Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft
 sponsorship. Any use of third-party trademarks or logos are subject to those third-party's policies.
+
+## License
+
+This project is licensed under either of
+
+- [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0) ([`LICENSE-APACHE`](LICENSE-APACHE))
+- [MIT license](https://opensource.org/licenses/MIT) ([`LICENSE-MIT`](LICENSE-MIT))
+
+at your option.
+
+The [SPDX](https://spdx.dev) license identifier for this project is `MIT OR Apache-2.0`.
