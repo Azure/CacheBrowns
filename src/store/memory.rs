@@ -1,4 +1,4 @@
-use crate::store::CacheStoreStrategy;
+use crate::store::{CacheStoreStrategy, KeyIterator};
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -13,8 +13,6 @@ impl<Key, Value> MemoryStore<Key, Value> {
         }
     }
 }
-
-pub type KeyIterator<'a, Key> = Box<dyn Iterator<Item = Key> + 'a>;
 
 // TODO: Should everything be by ref return? Does that have concurrency issues?
 impl<Key: Eq + Clone + std::hash::Hash, Value: Clone> CacheStoreStrategy<Key, Value>

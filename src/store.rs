@@ -1,8 +1,8 @@
-use crate::store::memory::KeyIterator;
-
 pub mod discrete_files;
 pub mod memory;
 pub mod replacement;
+
+pub type KeyIterator<'a, Key> = Box<dyn Iterator<Item = Key> + 'a>;
 
 pub trait CacheStoreStrategy<Key, Value> {
     fn get(&self, key: &Key) -> Option<Value>;
@@ -13,8 +13,8 @@ pub trait CacheStoreStrategy<Key, Value> {
     /// signals to any layer that a platform read has occurred that should be ignored for usage
     /// tracking purposes.
     ///
-    /// For leaf nodes, you can just call self.get, however no default is offered to ensure the
-    /// implementor has thought through whether or not they have side effects.
+    /// For leaf nodes, you implement this as a call to [`get`], however no default is offered to
+    /// ensure the implementor has thought through whether or not they have side effects.
     fn peek(&self, key: &Key) -> Option<Value>;
 
     fn put(&mut self, key: &Key, value: Value);

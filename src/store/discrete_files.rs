@@ -1,4 +1,4 @@
-use crate::store::memory::KeyIterator;
+use crate::store::KeyIterator;
 use crate::store::CacheStoreStrategy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
