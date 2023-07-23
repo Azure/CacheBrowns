@@ -5,7 +5,7 @@ version = "0.0.1-poc.0"
 edition = "2021"
 authors = ["Chris Henk <chhenk@microsoft.com>"]
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/Azure/cache_browns"
+repository = "https://github.com/Azure/CacheBrowns"
 readme = "README.md"
 keywords = ["cache"]
 
