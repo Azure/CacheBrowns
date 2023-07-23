@@ -1,5 +1,5 @@
-use crate::store::KeyIterator;
 use crate::store::CacheStoreStrategy;
+use crate::store::KeyIterator;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
