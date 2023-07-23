@@ -1,8 +1,13 @@
 [package]
 name = "cache_browns"
+description = "A general-purpose programmable, declarative cache"
 version = "0.0.1-poc.0"
 edition = "2021"
 authors = ["Chris Henk <chhenk@microsoft.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Azure/cache_browns"
+readme = "README.md"
+keywords = ["cache"]
 
 [dependencies]
 serde = { version = "1.0.163", features = ["derive"] }
