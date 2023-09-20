@@ -18,12 +18,12 @@ impl<Key, Value> MemoryStore<Key, Value> {
 impl<Key: Eq + Clone + std::hash::Hash, Value: Clone> CacheStoreStrategy<Key, Value>
     for MemoryStore<Key, Value>
 {
-    fn get(&self, key: &Key) -> Option<Value> {
-        self.data.get(key).cloned()
+    fn get(&mut self, key: &Key) -> Option<Value> {
+        self.peek(key)
     }
 
     fn peek(&self, key: &Key) -> Option<Value> {
-        self.get(key)
+        self.data.get(key).cloned()
     }
 
     fn put(&mut self, key: &Key, value: Value) {

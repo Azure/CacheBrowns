@@ -64,16 +64,16 @@ where
     Value: Serialize + for<'a> Deserialize<'a>,
     Serde: DiscreteFileSerializerDeserializer<Record<Key, Value>>,
 {
-    fn get(&self, key: &Key) -> Option<Value> {
+    fn get(&mut self, key: &Key) -> Option<Value> {
+        self.peek(key)
+    }
+
+    fn peek(&self, key: &Key) -> Option<Value> {
         if let Some(path) = self.index.get(key) {
             return Some(get::<Serde, Record<Key, Value>>(path.clone())?.value);
         }
 
         None
-    }
-
-    fn peek(&self, key: &Key) -> Option<Value> {
-        self.get(key)
     }
 
     fn put(&mut self, key: &Key, value: Value) {
@@ -145,16 +145,16 @@ where
     Value: Serialize + for<'a> Deserialize<'a>,
     Serde: DiscreteFileSerializerDeserializer<Value>,
 {
-    fn get(&self, key: &Key) -> Option<Value> {
+    fn get(&mut self, key: &Key) -> Option<Value> {
+        self.peek(key)
+    }
+
+    fn peek(&self, key: &Key) -> Option<Value> {
         if let Some(path) = self.index.get(key) {
             return get::<Serde, Value>(path.clone());
         }
 
         None
-    }
-
-    fn peek(&self, key: &Key) -> Option<Value> {
-        self.get(key)
     }
 
     fn put(&mut self, key: &Key, value: Value) {
