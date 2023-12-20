@@ -19,10 +19,6 @@ struct InnerState<Key, Value> {
     store: RwLock<Box<dyn CacheStoreStrategy<Key, Value> + Send + Sync>>,
 }
 
-pub enum PollHydrationError {
-    IntervalRangeError(String),
-}
-
 impl<Key, Value> PollingHydrationStrategy<Key, Value>
 where
     Key: Eq + Hash + Clone + 'static,
