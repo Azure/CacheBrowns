@@ -11,6 +11,7 @@ use super::{CacheHydrationStrategy, CacheLookupSuccess, StoreResult};
 
 pub struct PollingHydrationStrategy<Key, Value> {
     shared_inner_state: Arc<InnerState<Key, Value>>,
+    // TODO: Expose set_polling_rate?
     _polling_thread: PollingTask,
 }
 
